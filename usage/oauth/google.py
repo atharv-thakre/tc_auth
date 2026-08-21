@@ -45,7 +45,7 @@ from fastapi import Request
 #
 # Example:
 #
-auth.google_oauth.config(
+auth.google.config(
     client_id="YOUR_GOOGLE_CLIENT_ID",
     client_secret="YOUR_GOOGLE_CLIENT_SECRET",
     redirect_uri="https://api.example.com/oauth/google/callback",
@@ -71,7 +71,7 @@ auth.google_oauth.config(
 #     Avoid exposing client_secret to the frontend or returning
 #     the result of this method through a public API endpoint.
 #
-config = auth.google_oauth.load()
+config = auth.google.load()
 
 
 # ==========================================================
@@ -110,7 +110,7 @@ config = auth.google_oauth.load()
 #
 @app.get("/oauth/google/login")
 async def google_login(request: Request):
-    return await auth.google_oauth.login(
+    return await auth.google.login(
         request=request,
         frontend_url="https://app.example.com",
     )
@@ -158,7 +158,7 @@ async def google_login(request: Request):
 #
 @app.get("/oauth/google/callback")
 async def google_callback(request: Request):
-    return await auth.google_oauth.callback(
+    return await auth.google.callback(
         request=request,
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
@@ -186,7 +186,7 @@ async def google_callback(request: Request):
 #     /oauth/google/callback
 #        |
 #        v
-#     auth.google_oauth.callback()
+#     auth.google.callback()
 #        |
 #        v
 #     auth.oauth.login()
@@ -267,7 +267,7 @@ app = FastAPI()
 
 
 # Configure OAuth once during application setup.
-auth.google_oauth.config(
+auth.google.config(
     client_id="YOUR_GOOGLE_CLIENT_ID",
     client_secret="YOUR_GOOGLE_CLIENT_SECRET",
     redirect_uri="https://api.example.com/oauth/google/callback",
@@ -276,7 +276,7 @@ auth.google_oauth.config(
 
 @app.get("/oauth/google/login")
 async def google_login(request: Request):
-    return await auth.google_oauth.login(
+    return await auth.google.login(
         request=request,
         frontend_url="https://app.example.com",
     )
@@ -284,7 +284,7 @@ async def google_login(request: Request):
 
 @app.get("/oauth/google/callback")
 async def google_callback(request: Request):
-    return await auth.google_oauth.callback(
+    return await auth.google.callback(
         request=request,
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
