@@ -67,7 +67,7 @@ class OTPExpiredError(AuthError):
 class InvalidTokenError(AuthError):
     status_code = 401
 
-    def __init__(self, field):
+    def __init__(self, field:str = "token"):
         super().__init__(f"Invalid or expired token, failed {field}")
 
 

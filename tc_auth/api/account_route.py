@@ -34,7 +34,7 @@ class AccountRoutes:
         
         @self.router.put("/update/password")
         def update_password(body: UpdatePassword, user=current):
-            return self.account_service.update_password(account_id=user["account"]["id"], password=body["password"])
+            return self.account_service.update_password(account_id=user["account"]["id"], password=body.password)
         
 
     # ==========================================================

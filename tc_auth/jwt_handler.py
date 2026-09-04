@@ -47,4 +47,4 @@ def verify_token(token: str) -> dict:
             algorithms=[ALGORITHM],
         )
     except Exception:
-        raise InvalidTokenError()
+        raise InvalidTokenError("invalid")
