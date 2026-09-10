@@ -6,13 +6,12 @@ from ..schema import (
 )
 
 class DashAccountRoutes:
-    def __init__(self, app,  account_service, role_deps):
+    def __init__(self, account_service, role_deps):
         self.account_service = account_service
         self.role_deps = role_deps
 
-        self.router = APIRouter()
+        self.router = APIRouter(prefix="/account", tags=["Account ops"])
         self.register()
-        app.include_router(self.router, prefix="/tc-auth/account", tags=["Account ops"])
 
     def register(self):
         current = Depends(self.role_deps.require("superadmin"))

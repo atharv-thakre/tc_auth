@@ -5,13 +5,12 @@ from ..schema import (
 )
 
 class DashOTPRoutes:
-    def __init__(self, app,  otp_service, role_deps):
+    def __init__(self, otp_service, role_deps):
         self.otp_service = otp_service
         self.role_deps = role_deps
 
-        self.router = APIRouter()
+        self.router = APIRouter(prefix="/otp", tags=["OTP ops"])
         self.register()
-        app.include_router(self.router, prefix="/tc-auth/otp", tags=["OTP ops"])
 
     def register(self):
         current = Depends(self.role_deps.require("superadmin"))

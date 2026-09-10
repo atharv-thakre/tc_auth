@@ -4,14 +4,13 @@ from ..schema import UpdatePassword, UpdateSchema
 
 
 class AccountRoutes:
-    def __init__(self, app, session_service, account_service, deps):
+    def __init__(self, session_service, account_service, deps):
         self.session_service = session_service
         self.account_service = account_service
         self.deps = deps
 
-        self.router = APIRouter()
+        self.router = APIRouter(tags=["Profile Routes"])
         self.register()
-        app.include_router(self.router, prefix="/tc-auth", tags=["Profile Routes"])
 
     def register(self):
         current = Depends(self.deps.get_current)

@@ -1,3 +1,5 @@
+from fastapi import applications
+from fastapi import applications
 from fastapi import APIRouter , Depends
 from datetime import datetime
 
@@ -8,7 +10,7 @@ from ..schema import (
 )
 
 class DashboardRoute:
-    def __init__(self, app , email_service , github_service, google_service, jwt_service, role_deps, dashboard_service):
+    def __init__(self, email_service , github_service, google_service, jwt_service, role_deps, dashboard_service):
         self.email_service = email_service
         self.github_service = github_service
         self.google_service = google_service
@@ -16,10 +18,9 @@ class DashboardRoute:
         self.role_deps = role_deps
         self.dashboard_service = dashboard_service
 
-        self.router = APIRouter()
+        self.router = APIRouter(prefix="/config", tags=["CONFIG"])
 
         self.register()
-        app.include_router(self.router, prefix="/tc-auth/config", tags=["CONFIG"])
 
 
     def register(self):

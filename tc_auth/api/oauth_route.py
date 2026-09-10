@@ -4,7 +4,6 @@ from fastapi import APIRouter, Request
 class OAuthRoutes:
     def __init__(
         self,
-        app,
         google,
         github,
 
@@ -12,16 +11,14 @@ class OAuthRoutes:
         self.google = google
         self.github = github
 
-        router = APIRouter()
+        self.router = APIRouter(tags=["OAuth Login"])
 
-        router.get("/google/login")(self.google_login)
-        router.get("/google/callback")(self.google_callback)
-        router.get("/github/login")(self.github_login)
-        router.get("/github/callback")(self.github_callback)
+        self.router.get("/google/login")(self.google_login)
+        self.router.get("/google/callback")(self.google_callback)
+        self.router.get("/github/login")(self.github_login)
+        self.router.get("/github/callback")(self.github_callback)
  
-
-        app.include_router(router, prefix="/tc-auth", tags=["OAuth Login"])
-
+ 
     # ==========================================================
     # GOOGLE OAUTH
     # ==========================================================

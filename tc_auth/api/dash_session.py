@@ -5,13 +5,12 @@ from ..schema import (
 )
 
 class DashSessionRoutes:
-    def __init__(self, app,  session_service, role_deps):
+    def __init__(self, session_service, role_deps):
         self.session_service = session_service
         self.role_deps = role_deps
         
-        self.router = APIRouter()
+        self.router = APIRouter(prefix="/session", tags=["Session ops"])
         self.register()
-        app.include_router(self.router, prefix="/tc-auth/session", tags=["Session ops"])
 
     def register(self):
         current = Depends(self.role_deps.require("superadmin"))

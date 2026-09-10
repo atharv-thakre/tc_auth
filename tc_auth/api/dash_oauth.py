@@ -5,13 +5,12 @@ from ..schema import (
 )
 
 class DashOAuthRoutes:
-    def __init__(self, app,  oauth_service, role_deps):
+    def __init__(self, oauth_service, role_deps):
         self.oauth_service = oauth_service  
         self.role_deps = role_deps
 
-        self.router = APIRouter()
+        self.router = APIRouter(prefix="/oauth", tags=["OAuth ops"])
         self.register()
-        app.include_router(self.router, prefix="/tc-auth/oauth", tags=["OAuth ops"])
 
     def register(self):
         current = Depends(self.role_deps.require("superadmin"))

@@ -1,3 +1,4 @@
+from fastapi import applications
 from fastapi import APIRouter, Request
 
 from ..schema import (
@@ -12,7 +13,6 @@ from ..schema import (
 class AuthRoutes:
     def __init__(
         self,
-        app,
         email_service,
         auth_service,
         otp_service,
@@ -23,16 +23,14 @@ class AuthRoutes:
         self.otp_service = otp_service
         self.get_user = get_user
 
-        router = APIRouter()
+        self.router = APIRouter(tags=["Sign UP / IN"])
 
-        router.post("/send/email/otp/{purpose}")(self.send_email_otp)
-        router.post("/signup/otp")(self.signup_with_otp)
-        router.post("/signup/password")(self.signup_with_password)
-        router.post("/login/otp")(self.login_with_otp)
-        router.post("/login/password")(self.login_with_password)
-        router.post("/forgot/password")(self.forgot_password)
-
-        app.include_router(router, prefix="/tc-auth", tags=["Sign UP / IN"])
+        self.router.post("/send/email/otp/{purpose}")(self.send_email_otp)
+        self.router.post("/signup/otp")(self.signup_with_otp)
+        self.router.post("/signup/password")(self.signup_with_password)
+        self.router.post("/login/otp")(self.login_with_otp)
+        self.router.post("/login/password")(self.login_with_password)
+        self.router.post("/forgot/password")(self.forgot_password)
 
     # ==========================================================
     # EMAIL OTP
