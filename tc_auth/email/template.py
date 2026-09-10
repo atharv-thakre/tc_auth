@@ -219,13 +219,35 @@ def signup_otp_template(
     )
 
 # ==========================================================
+# RESET PASSWORD TEMPLATE
+# ==========================================================
+
+def reset_password_template(
+    *,
+    otp: str,
+    expiry: int,
+):
+    return _otp_template(
+        title="Reset your password",
+        message=(
+            "We received a request to reset your password. "
+            "Use the verification code below to set a new password."
+        ),
+        otp=otp,
+        expiry=expiry,
+    )
+
+# ==========================================================
 # TEMPLATES COLLECTION
 # ==========================================================
 
 
 templates = {
     "verify": verify_email_template,
+    "verify_email": verify_email_template,
     "login": login_otp_template,
     "signup": signup_otp_template,
+    "reset": reset_password_template,
+    "reset_password": reset_password_template,
 }
 

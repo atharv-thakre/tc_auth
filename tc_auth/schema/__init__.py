@@ -1,39 +1,39 @@
-
-from .account import(
+from .account import (
     SuperUpdateSchema,
     SuperCreateSchema,
     SuperDeleteSchema,
     UpdatePassword,
-    UpdateSchema
+    UpdateSchema,
 )
 
 from .dashboard import (
     OAuthConfig,
     EmailConfig,
-    JWTConfig
+    JWTConfig,
 )
 
 from .login import (
     SendOTPRequest,
     LoginPasswordRequest,
     LoginOTPRequest,
+    ForgotPasswordRequest,
     SignupPasswordRequest,
-    SignupOTPRequest
+    SignupOTPRequest,
 )
 
 from .oauth import (
     CreateOAuth,
-    DeleteOAuth
+    DeleteOAuth,
 )
 
 from .otp import (
     CreateOTP,
-    DeleteOTP
+    DeleteOTP,
 )
 
 from .sessions import (
     DestroySession,
-    DestroyAllSession
+    DestroyAllSession,
 )
 
 __all__ = [
@@ -49,10 +49,11 @@ __all__ = [
     "EmailConfig",
     "JWTConfig",
 
-     # login
+    # login
     "SendOTPRequest",
     "LoginPasswordRequest",
     "LoginOTPRequest",
+    "ForgotPasswordRequest",
     "SignupPasswordRequest",
     "SignupOTPRequest",
 
@@ -67,5 +68,4 @@ __all__ = [
     # sessions
     "DestroySession",
     "DestroyAllSession",
-
 ]

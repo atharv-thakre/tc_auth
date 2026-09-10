@@ -1,6 +1,11 @@
 import smtplib
 from email.message import EmailMessage
 from ..email.template import templates
+from ..exceptions.error import (
+    EmailNotConfiguredError,
+    EmailSendError,
+    InvalidEmailPurposeError,
+)
 
 
 class EmailService:
@@ -44,7 +49,6 @@ class EmailService:
         sender_name: str | None = None,
         use_tls: bool = True,
     ):
-        
         self.host = host
         self.port = port
 
@@ -55,7 +59,6 @@ class EmailService:
         self.sender_name = sender_name
 
         self.use_tls = use_tls
-
 
     # ==========================================================
     # SEND
@@ -69,16 +72,20 @@ class EmailService:
         body: str,
         html: bool = False,
     ):
+        if not self.sender:
+            raise EmailNotConfiguredError("Email sender address is not configured")
+
+        if not to or not isinstance(to, str) or not to.strip():
+            raise EmailSendError("Recipient email address 'to' is required")
+
         message = EmailMessage()
 
         if self.sender_name:
-            message["From"] = (
-                f"{self.sender_name} <{self.sender}>"
-            )
+            message["From"] = f"{self.sender_name} <{self.sender}>"
         else:
             message["From"] = self.sender
 
-        message["To"] = to
+        message["To"] = to.strip()
         message["Subject"] = subject
 
         if html:
@@ -89,10 +96,20 @@ class EmailService:
         else:
             message.set_content(body)
 
-        smtp = self._connect()
-
-        smtp.send_message(message)
-        smtp.quit()
+        smtp = None
+        try:
+            smtp = self._connect()
+            smtp.send_message(message)
+        except (EmailNotConfiguredError, EmailSendError):
+            raise
+        except Exception as e:
+            raise EmailSendError(f"Failed to send email to {to}: {str(e)}")
+        finally:
+            if smtp is not None:
+                try:
+                    smtp.quit()
+                except Exception:
+                    pass
 
     # ==========================================================
     # OTP
@@ -105,13 +122,16 @@ class EmailService:
         purpose: str,
         expiry: int = 300,
     ):
+        template = templates.get(purpose)
+        if template is None:
+            raise InvalidEmailPurposeError(purpose)
+
         result = self.otp.create(
             identifier=email,
             purpose=purpose,
             expiry=expiry,
         )
 
-        template = templates.get(purpose)
         body = template(
             otp=result["otp"],
             expiry=expiry,
@@ -154,7 +174,7 @@ class EmailService:
             email=email,
             purpose="login",
         )
-    
+
     # ==========================================================
     # SIGNUP OTP
     # ==========================================================
@@ -167,28 +187,38 @@ class EmailService:
             email=email,
             purpose="signup",
         )
-    
+
     # ==========================================================
     # PRIVATE
     # ==========================================================
 
-    
     def _connect(self):
-        if self.use_tls:
-            smtp = smtplib.SMTP(
-                self.host,
-                self.port,
-            )
-            smtp.starttls()
-        else:
-            smtp = smtplib.SMTP_SSL(
-                self.host,
-                self.port,
+        if not self.host or not self.port or not self.username or not self.password:
+            raise EmailNotConfiguredError(
+                "Email service host, port, username, or password is not configured"
             )
 
-        smtp.login(
-            self.username,
-            self.password,
-        )
+        try:
+            if self.use_tls:
+                smtp = smtplib.SMTP(
+                    self.host,
+                    int(self.port),
+                )
+                smtp.starttls()
+            else:
+                smtp = smtplib.SMTP_SSL(
+                    self.host,
+                    int(self.port),
+                )
 
-        return smtp
+            smtp.login(
+                self.username,
+                self.password,
+            )
+            return smtp
+        except smtplib.SMTPAuthenticationError as e:
+            raise EmailSendError(f"SMTP authentication failed: {str(e)}")
+        except smtplib.SMTPException as e:
+            raise EmailSendError(f"SMTP error occurred: {str(e)}")
+        except Exception as e:
+            raise EmailSendError(f"Failed to connect to SMTP server: {str(e)}")

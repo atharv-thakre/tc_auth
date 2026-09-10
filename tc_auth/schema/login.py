@@ -13,6 +13,13 @@ class LoginPasswordRequest(BaseModel):
 class LoginOTPRequest(BaseModel):
     email: EmailStr
     otp: str = Field(min_length=6, max_length=6)
+    password: str | None = None
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+    otp: str = Field(min_length=6, max_length=6)
+    password: str = Field(min_length=8)
 
 
 class SignupPasswordRequest(BaseModel):

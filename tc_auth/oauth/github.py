@@ -2,6 +2,12 @@ from authlib.integrations.starlette_client import OAuth
 from fastapi.responses import RedirectResponse
 from fastapi import Request
 
+from ..exceptions.error import (
+    AuthError,
+    OAuthCallbackError,
+    OAuthNotConfiguredError,
+)
+
 
 class GitHubOAuth:
     def __init__(self, oauth_service):
@@ -11,9 +17,7 @@ class GitHubOAuth:
         self.client_id = None
         self.client_secret = None
 
-    def load(
-        self,
-        ):
+    def load(self):
         return {
             "client_id": self.client_id,
             "client_secret": self.client_secret,
@@ -30,7 +34,6 @@ class GitHubOAuth:
         self.redirect_uri = redirect_uri
         self.client_id = client_id
         self.client_secret = client_secret
-
 
         oauth = OAuth()
 
@@ -51,7 +54,13 @@ class GitHubOAuth:
         request: Request,
         frontend_url: str,
     ):
-        request.session["frontend_url"] = frontend_url
+        if self.client is None:
+            raise OAuthNotConfiguredError("GitHub")
+
+        if not frontend_url or not isinstance(frontend_url, str):
+            raise AuthError("frontend_url parameter is required")
+
+        request.session["frontend_url"] = frontend_url.strip()
         return await self.client.authorize_redirect(
             request,
             self.redirect_uri,
@@ -64,32 +73,56 @@ class GitHubOAuth:
         ip_address: str | None = None,
         user_agent: str | None = None,
     ):
-        frontend_url = request.session.get("frontend_url")
-        token = await self.client.authorize_access_token(request)
+        if self.client is None:
+            raise OAuthNotConfiguredError("GitHub")
+
+        frontend_url = request.session.get("frontend_url", "").rstrip("/")
         request.session.pop("frontend_url", None)
 
-        user = await self.client.get(
-            "user",
-            token=token,
-        )
+        if not frontend_url:
+            frontend_url = ""
 
-        user = user.json()
+        try:
+            token = await self.client.authorize_access_token(request)
+        except Exception as e:
+            raise OAuthCallbackError(f"GitHub authorization failed: {str(e)}")
+
+        if not token or not isinstance(token, dict):
+            raise OAuthCallbackError("Failed to obtain GitHub access token")
+
+        try:
+            user_response = await self.client.get(
+                "user",
+                token=token,
+            )
+            user = user_response.json()
+        except Exception as e:
+            raise OAuthCallbackError(f"Failed to fetch GitHub profile: {str(e)}")
+
+        if not isinstance(user, dict) or "id" not in user:
+            raise OAuthCallbackError("Invalid GitHub profile response")
 
         email = user.get("email")
 
         if email is None:
-            emails = await self.client.get(
-                "user/emails",
-                token=token,
-            )
+            try:
+                emails_response = await self.client.get(
+                    "user/emails",
+                    token=token,
+                )
+                emails = emails_response.json()
 
-            for item in emails.json():
-                if (
-                    item["primary"]
-                    and item["verified"]
-                ):
-                    email = item["email"]
-                    break
+                if isinstance(emails, list):
+                    for item in emails:
+                        if (
+                            isinstance(item, dict)
+                            and item.get("primary")
+                            and item.get("verified")
+                        ):
+                            email = item.get("email")
+                            break
+            except Exception:
+                pass
 
         result = self.oauth_service.login(
             provider="github",
@@ -101,8 +134,7 @@ class GitHubOAuth:
             user_agent=user_agent,
         )
 
-        
+        callback_url = f"{frontend_url}/oauth/callback" if frontend_url else "/oauth/callback"
         return RedirectResponse(
-            f"{frontend_url}/oauth/callback"
-            f"?access_token={result['access_token']}"
+            f"{callback_url}?access_token={result['access_token']}"
         )

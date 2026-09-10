@@ -2,6 +2,12 @@ from authlib.integrations.starlette_client import OAuth
 from fastapi import Request
 from fastapi.responses import RedirectResponse
 
+from ..exceptions.error import (
+    AuthError,
+    OAuthCallbackError,
+    OAuthNotConfiguredError,
+)
+
 
 class GoogleOAuth:
     def __init__(self, oauth_service):
@@ -11,9 +17,7 @@ class GoogleOAuth:
         self.client_id = None
         self.client_secret = None
 
-    def load(
-        self,
-        ):
+    def load(self):
         return {
             "client_id": self.client_id,
             "client_secret": self.client_secret,
@@ -45,18 +49,22 @@ class GoogleOAuth:
             },
         )
 
-            
     async def login(
         self,
         request: Request,
         frontend_url: str,
     ):
-        request.session["frontend_url"] = frontend_url
+        if self.client is None:
+            raise OAuthNotConfiguredError("Google")
+
+        if not frontend_url or not isinstance(frontend_url, str):
+            raise AuthError("frontend_url parameter is required")
+
+        request.session["frontend_url"] = frontend_url.strip()
         return await self.client.authorize_redirect(
             request,
             self.redirect_uri,
         )
-
 
     async def callback(
         self,
@@ -65,11 +73,32 @@ class GoogleOAuth:
         ip_address: str | None = None,
         user_agent: str | None = None,
     ):
-        frontend_url = request.session.get("frontend_url")
-        token = await self.client.authorize_access_token(request)
+        if self.client is None:
+            raise OAuthNotConfiguredError("Google")
+
+        frontend_url = request.session.get("frontend_url", "").rstrip("/")
         request.session.pop("frontend_url", None)
 
-        user = token["userinfo"]
+        if not frontend_url:
+            frontend_url = ""
+
+        try:
+            token = await self.client.authorize_access_token(request)
+        except Exception as e:
+            raise OAuthCallbackError(f"Google authorization failed: {str(e)}")
+
+        if not token or not isinstance(token, dict):
+            raise OAuthCallbackError("Failed to obtain Google access token")
+
+        user = token.get("userinfo")
+        if not user or not isinstance(user, dict) or "sub" not in user:
+            try:
+                user = await self.client.userinfo(token=token)
+            except Exception:
+                pass
+
+        if not user or not isinstance(user, dict) or "sub" not in user:
+            raise OAuthCallbackError("Failed to obtain Google user information")
 
         result = self.oauth_service.login(
             provider="google",
@@ -81,7 +110,7 @@ class GoogleOAuth:
             user_agent=user_agent,
         )
 
+        callback_url = f"{frontend_url}/oauth/callback" if frontend_url else "/oauth/callback"
         return RedirectResponse(
-            f"{frontend_url}/oauth/callback"
-            f"?access_token={result['access_token']}"
+            f"{callback_url}?access_token={result['access_token']}"
         )
