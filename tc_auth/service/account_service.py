@@ -236,6 +236,7 @@ class AccountService:
             account.role = role
             try:
                 db.commit()
+                return {"success": True, "message": "Role updated successfully"}
             except Exception as e:
                 db.rollback()
                 raise DatabaseError(f"Failed to update role: {str(e)}")
@@ -252,6 +253,7 @@ class AccountService:
             account.status = status
             try:
                 db.commit()
+                return {"success": True, "message": "Status updated successfully"}
             except Exception as e:
                 db.rollback()
                 raise DatabaseError(f"Failed to update status: {str(e)}")

@@ -224,6 +224,8 @@ Returned by `GET /tc-auth/config/load/`.
 |---|---|---|
 | `AccountService.delete_user` | `{"success": True, "message": "Account deleted successfully"}` | Replaces `None` |
 | `AccountService.update_password` | `{"success": True, "message": "Password updated successfully"}` | Replaces `None` |
+| `AccountService.update_role` | `{"success": True, "message": "Role updated successfully"}` | Replaces `None` |
+| `AccountService.update_status` | `{"success": True, "message": "Status updated successfully"}` | Replaces `None` |
 | `SessionService.destroy_session` | `{"success": True, "message": "Session destroyed successfully"}` | Replaces `None` |
 | `SessionService.destroy_all` | `{"success": True, "message": "All sessions destroyed for account", "count": <int>}` | Replaces `None` |
 | `SessionService.cleanup_expired` | `{"success": True, "message": "Expired sessions cleaned up successfully", "count": <int>}` | Replaces `None` |

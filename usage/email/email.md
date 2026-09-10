@@ -432,9 +432,9 @@ verification_otp = auth.email.send_verify_email(
 
   Method                  Return
   ----------------------- --------------------------------
-  `config()`              `None`
+  `config()`              `dict` --- `{"success": True, "message": "..."}`
   `load()`                `dict`
-  `send()`                `None`
+  `send()`                `dict` --- `{"success": True, "message": "..."}`
   `send_otp()`            `dict` containing `expires_at`
   `send_login_otp()`      `dict` containing `expires_at`
   `send_signup_otp()`     `dict` containing `expires_at`

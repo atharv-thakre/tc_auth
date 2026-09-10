@@ -362,10 +362,10 @@ Each dictionary uses the same OTP object structure returned by
   Method          Return
   --------------- ------------------------------------
   `create()`      `dict` --- OTP and expiration time
-  `verify()`      `None`
-  `revoke()`      `None`
-  `cleanup()`     `None`
-  `clear_all()`   `None`
+  `verify()`      `dict` --- `{"success": True, "message": "..."}`
+  `revoke()`      `dict` --- `{"success": True, "count": N}`
+  `cleanup()`     `dict` --- `{"success": True, "count": N}`
+  `clear_all()`   `dict` --- `{"success": True, "count": N}`
   `get_all()`     `list[dict]`
   `query()`       `list[dict]`
 

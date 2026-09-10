@@ -333,10 +333,10 @@ sessions = auth.session.query(
   `create_session()`    `dict` --- Session ID and raw token
   `by_id()`             `dict` --- Session object
   `by_account()`        `list[dict]` --- Account sessions
-  `destroy_session()`   `None`
-  `destroy_all()`       `None`
-  `cleanup_expired()`   `None`
-  `clear_all()`         `None`
+  `destroy_session()`   `dict` --- `{"success": True, "message": "..."}`
+  `destroy_all()`       `dict` --- `{"success": True, "count": N}`
+  `cleanup_expired()`   `dict` --- `{"success": True, "count": N}`
+  `clear_all()`         `dict` --- `{"success": True, "count": N}`
   `get_all()`           `list[dict]`
   `query()`             `list[dict]`
 

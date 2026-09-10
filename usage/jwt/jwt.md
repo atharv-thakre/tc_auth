@@ -294,7 +294,7 @@ config = auth.jwt.load()
 
   Method                    Return
   ------------------------- --------
-  `config()`                `None`
+  `config()`                `dict` --- `{"success": True, "message": "..."}`
   `load()`                  `dict`
   `create_access_token()`   `str`
   `verify_token()`          `dict`

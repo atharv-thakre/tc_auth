@@ -425,7 +425,7 @@ updated_user = auth.account.update_status(
 
 ## Return Value
 
-Returns the updated account object as a `dict`.
+Returns `{"success": True, "message": "Status updated successfully"}`.
 
 ------------------------------------------------------------------------
 
@@ -450,7 +450,7 @@ requires an explicit role.
 ## Example
 
 ``` python
-updated_user = auth.account.update_role(
+result = auth.account.update_role(
     account_id=1,
     role="admin",
 )
@@ -458,7 +458,7 @@ updated_user = auth.account.update_role(
 
 ## Return Value
 
-Returns the updated account object as a `dict`.
+Returns `{"success": True, "message": "Role updated successfully"}`.
 
 ------------------------------------------------------------------------
 
@@ -670,19 +670,19 @@ Example output:
   Method                Returns        Description
   --------------------- -------------- -----------------------------------------
   `create_user()`       `dict`         Newly created account.
-  `delete_user()`       `None`         Deletes an account.
-  `update_user()`       `None`         Updates standard account fields.
-  `super_update()`      `None`         Updates standard and privileged fields.
-  `update_password()`   `None`         Updates account password.
-  `update_status()`     `None`         Updates account status.
-  `update_role()`       `None`         Updates account role.
+  `delete_user()`       `dict`         Deletes an account (`success`, `message`).
+  `update_user()`       `dict`         Updates standard account fields.
+  `super_update()`      `dict`         Updates standard and privileged fields.
+  `update_password()`   `dict`         Updates account password (`success`, `message`).
+  `update_status()`     `dict`         Updates account status (`success`, `message`).
+  `update_role()`       `dict`         Updates account role (`success`, `message`).
   `get_all()`           `list[dict]`   Paginated list of accounts.
   `query()`             `list[dict]`   List of matching accounts.
 
 ## Quick Usage Reference
 
 ``` python
-from usage.connect import auth
+from connect import auth
 
 # Create
 account = auth.account.create_user(
