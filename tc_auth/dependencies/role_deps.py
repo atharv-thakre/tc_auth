@@ -14,12 +14,17 @@ class RoleDeps:
         def dependency(
             current=Depends(self.auth_deps.get_current),
         ):
-            user = current["account"]
+            user = current.get("account") if isinstance(current, dict) else None
+            if not user or not isinstance(user, dict):
+                raise PermissionDeniedError(current=None, required=role, field="role")
 
-            if user["role"] != role:
+            user_role = user.get("role")
+
+            if user_role != role:
                 raise PermissionDeniedError(
-                    user["role"],
-                    role,
+                    current=user_role,
+                    required=role,
+                    field="role",
                 )
 
             return user
@@ -33,12 +38,17 @@ class RoleDeps:
         def dependency(
             current=Depends(self.auth_deps.get_current),
         ):
-            user = current["account"]
+            user = current.get("account") if isinstance(current, dict) else None
+            if not user or not isinstance(user, dict):
+                raise PermissionDeniedError(current=None, required=roles, field="role")
 
-            if user["role"] not in roles:
+            user_role = user.get("role")
+
+            if user_role not in roles:
                 raise PermissionDeniedError(
-                    user["role"],
-                    roles,
+                    current=user_role,
+                    required=roles,
+                    field="role",
                 )
 
             return user
@@ -52,12 +62,17 @@ class RoleDeps:
         def dependency(
             current=Depends(self.auth_deps.get_current),
         ):
-            user = current["account"]
+            user = current.get("account") if isinstance(current, dict) else None
+            if not user or not isinstance(user, dict):
+                raise PermissionDeniedError(current=None, field="role", message="Permission denied for role")
 
-            if user["role"] in roles:
+            user_role = user.get("role")
+
+            if user_role in roles:
                 raise PermissionDeniedError(
-                    user["role"],
-                    roles,
+                    current=user_role,
+                    field="role",
+                    message=f"Role '{user_role}' is blocked",
                 )
 
             return user
