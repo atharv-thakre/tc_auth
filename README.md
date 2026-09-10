@@ -123,8 +123,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Wire tc_auth routes (all auth, oauth, profile, and admin dashboard routes)
-auth.include_routes(app, prefix="/tc-auth")
+# Wire tc_auth routes (prefix defaults to "/tc-auth" and is configurable: auth.include_routes(app, prefix="/tc-auth"))
+auth.include_routes(app)
 
 # Include your custom feature routers
 app.include_router(items_router)

@@ -17,4 +17,4 @@ This folder documents the route modules in `tc_auth/api`.
 Notes:
 
 - These docs are based on the current route modules in `tc_auth/api`, not the older partial copies in `tc_auth/docs`.
-- The route files use `prefix="/tc-auth"` or a nested prefix under it, so all paths below are relative to that base unless noted otherwise.
+- All endpoints are mounted under `/tc-auth` by default.

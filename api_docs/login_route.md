@@ -214,9 +214,7 @@ const data = await res.json();
 
 Resets the password after verifying a reset OTP, then returns a fresh login token.
 
-Important:
-
-- The handler currently uses `body.password`, but the schema file in `tc_auth/schema/login.py` does not declare that field. The example below reflects the intended payload shape.
+The request requires a valid reset OTP along with the new password (minimum 8 characters).
 
 Body:
 

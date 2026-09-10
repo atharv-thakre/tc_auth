@@ -111,6 +111,8 @@ def admin_settings(admin=Depends(auth.role.require("admin"))):
 
 ## 3. `run.py` Implementation
 
+> For an in-depth walkthrough of runner logic, route registration, and duplicate prevention, see [run.md](run.md).
+
 ```python
 import uvicorn
 from fastapi import FastAPI
@@ -131,7 +133,8 @@ app.add_middleware(
 )
 
 # Wire all tc_auth routes (Login, Signup, OAuth, Profiles, and Admin Dashboard)
-auth.include_routes(app, prefix="/tc-auth")
+# Note: The prefix parameter defaults to "/tc-auth" and is configurable: auth.include_routes(app, prefix="/tc-auth")
+auth.include_routes(app)
 
 # Include your application's feature routers
 app.include_router(profile_router)
