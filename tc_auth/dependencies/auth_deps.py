@@ -107,18 +107,21 @@ class AuthDeps:
 
     def get_current_account(
         self,
-        current=Depends(get_current),
+        credentials: HTTPAuthorizationCredentials = Depends(security_jwt),
     ):
+        current = self.get_current(credentials)
         return current["account"]
 
     def get_current_session(
         self,
-        current=Depends(get_current),
+        credentials: HTTPAuthorizationCredentials = Depends(security_jwt),
     ):
+        current = self.get_current(credentials)
         return current["session"]
 
     def get_current_payload(
         self,
-        current=Depends(get_current),
+        credentials: HTTPAuthorizationCredentials = Depends(security_jwt),
     ):
+        current = self.get_current(credentials)
         return current["payload"]
