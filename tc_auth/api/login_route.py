@@ -1,12 +1,16 @@
-from fastapi import applications
 from fastapi import APIRouter, Request
 
 from ..schema import (
     SendOTPRequest,
     LoginPasswordRequest,
     LoginOTPRequest,
+    ForgotPasswordRequest,
     SignupPasswordRequest,
     SignupOTPRequest,
+)
+from ..exceptions.error import (
+    AuthError,
+    InvalidEmailPurposeError,
 )
 
 
@@ -41,10 +45,14 @@ class AuthRoutes:
         purpose: str,
         body: SendOTPRequest,
     ):
-        # purpose must be signup , login , reset , verify
+        normalized_purpose = purpose.strip().lower()
+        valid_purposes = {"signup", "login", "reset", "reset_password", "verify", "verify_email"}
+        if normalized_purpose not in valid_purposes:
+            raise InvalidEmailPurposeError(purpose)
+
         return self.email_service.send_otp(
             email=body.email,
-            purpose=purpose,
+            purpose=normalized_purpose,
         )
 
     # ==========================================================
@@ -69,7 +77,7 @@ class AuthRoutes:
             handle=body.handle,
             **self._request_meta(request),
         )
-    
+
     # ==========================================================
     # SIGNUP WITH PASSWORD
     # ==========================================================
@@ -111,7 +119,6 @@ class AuthRoutes:
             **self._request_meta(request),
         )
 
-
     # ==========================================================
     # LOGIN WITH PASSWORD
     # ==========================================================
@@ -126,17 +133,19 @@ class AuthRoutes:
             password=body.password,
             **self._request_meta(request),
         )
-    
+
     # ==========================================================
     # FORGOT PASSWORD
     # ==========================================================
-    
+
     def forgot_password(
         self,
         request: Request,
-        body: LoginOTPRequest,
+        body: ForgotPasswordRequest,
     ):
-        
+        if not getattr(body, "password", None):
+            raise AuthError("New password is required to reset password")
+
         self.otp_service.verify(
             identifier=body.email,
             purpose="reset",
@@ -149,9 +158,8 @@ class AuthRoutes:
 
         self.auth_service.update_password(
             account["id"],
-            password=body.password
+            password=body.password,
         )
-
 
         return self.auth_service.create_login_response(
             account=account,

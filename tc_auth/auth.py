@@ -1,4 +1,3 @@
-
 from fastapi import FastAPI
 from sqlalchemy import Engine 
 
@@ -48,8 +47,9 @@ from .api import (
     DashSessionRoutes,
 )
 
+
 class Auth:
-    def __init__(self, engine: Engine):
+    def __init__(self, engine: Engine, app: FastAPI | None = None):
         self.engine = engine
         self.session_factory = create_session_factory(engine)
 
@@ -151,6 +151,9 @@ class Auth:
             dashboard_service=self.dashboard
         )
 
+        if app is not None:
+            self.include_routes(app)
+
     def include_routes(
         self,
         app: FastAPI,
@@ -211,5 +214,3 @@ class Auth:
 
     def destroy(self):
         Base.metadata.drop_all(bind=self.engine)
-
-        
