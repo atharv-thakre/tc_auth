@@ -109,19 +109,45 @@ class AuthDeps:
         self,
         credentials: HTTPAuthorizationCredentials = Depends(security_jwt),
     ):
-        current = self.get_current(credentials)
-        return current["account"]
+        if not credentials or not credentials.credentials:
+            raise InvalidTokenError(field="credentials", message="Missing authorization credentials")
+
+        payload, _ = self._authenticate(
+            credentials.credentials
+        )
+
+        try:
+            account = self.get_user.by_id(
+                payload["aid"]
+            )
+        except Exception:
+            raise InvalidTokenError(field="user", message="User account not found")
+
+        if not account:
+            raise InvalidTokenError(field="user", message="User account not found")
+
+        return account
 
     def get_current_session(
         self,
         credentials: HTTPAuthorizationCredentials = Depends(security_jwt),
     ):
-        current = self.get_current(credentials)
-        return current["session"]
+        if not credentials or not credentials.credentials:
+            raise InvalidTokenError(field="credentials", message="Missing authorization credentials")
+
+        _, session = self._authenticate(
+            credentials.credentials
+        )
+        return session
 
     def get_current_payload(
         self,
         credentials: HTTPAuthorizationCredentials = Depends(security_jwt),
     ):
-        current = self.get_current(credentials)
-        return current["payload"]
+        if not credentials or not credentials.credentials:
+            raise InvalidTokenError(field="credentials", message="Missing authorization credentials")
+
+        payload, _ = self._authenticate(
+            credentials.credentials
+        )
+        return payload
