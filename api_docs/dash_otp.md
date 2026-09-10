@@ -90,7 +90,13 @@ Body:
 
 Response:
 
-- `null`
+```json
+{
+  "success": true,
+  "message": "OTP revoked successfully",
+  "count": 1
+}
+```
 
 ## DELETE `/cleanup`
 
@@ -98,7 +104,13 @@ Deletes expired OTP records.
 
 Response:
 
-- `null`
+```json
+{
+  "success": true,
+  "message": "Expired OTPs cleaned successfully",
+  "count": 5
+}
+```
 
 ## DELETE `/clear`
 
@@ -106,4 +118,10 @@ Deletes all OTP records.
 
 Response:
 
-- `null`
+```json
+{
+  "success": true,
+  "message": "All OTPs cleared successfully",
+  "count": 12
+}
+```

@@ -49,5 +49,4 @@ class DashAccountRoutes:
 
         @self.router.delete("/")
         def delete(body: SuperDeleteSchema, user=current):
-            self.account_service.delete_user(**body.model_dump())
-            return {"success": True, "message": "Account deleted successfully"}
+            return self.account_service.delete_user(**body.model_dump())

@@ -42,15 +42,12 @@ class DashOTPRoutes:
 
         @self.router.delete("/")
         def delete_otp(body: DeleteOTP, user=current):    
-            self.otp_service.revoke(**body.model_dump())
-            return {"success": True, "message": "OTP revoked successfully"}
+            return self.otp_service.revoke(**body.model_dump())
 
         @self.router.delete("/cleanup")
         def cleanup(user=current):
-            self.otp_service.cleanup()
-            return {"success": True, "message": "Expired OTPs cleaned up successfully"}
+            return self.otp_service.cleanup()
 
         @self.router.delete("/clear")
         def clear(user=current):
-            self.otp_service.clear_all()
-            return {"success": True, "message": "All OTPs cleared successfully"}
+            return self.otp_service.clear_all()

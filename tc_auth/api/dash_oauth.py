@@ -44,5 +44,4 @@ class DashOAuthRoutes:
 
         @self.router.delete("/")
         def delete(body: DeleteOAuth, user=current):
-            self.oauth_service.unlink_account(**body.model_dump())
-            return {"success": True, "message": "OAuth link removed successfully"}
+            return self.oauth_service.unlink_account(**body.model_dump())

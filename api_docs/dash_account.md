@@ -114,4 +114,9 @@ Body:
 
 Response:
 
-- `null`
+```json
+{
+  "success": true,
+  "message": "Account deleted successfully"
+}
+```

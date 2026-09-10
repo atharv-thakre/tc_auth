@@ -115,6 +115,7 @@ class SessionService:
             try:
                 db.delete(session)
                 db.commit()
+                return {"success": True, "message": "Session destroyed successfully"}
             except Exception as e:
                 db.rollback()
                 raise DatabaseError(f"Failed to destroy session: {str(e)}")
@@ -125,12 +126,17 @@ class SessionService:
     ):
         with self.session_factory() as db:
             try:
-                (
+                deleted = (
                     db.query(Session)
                     .filter(Session.account_id == account_id)
                     .delete(synchronize_session=False)
                 )
                 db.commit()
+                return {
+                    "success": True,
+                    "message": "All sessions destroyed for account",
+                    "count": deleted,
+                }
             except Exception as e:
                 db.rollback()
                 raise DatabaseError(f"Failed to destroy all sessions: {str(e)}")
@@ -138,7 +144,7 @@ class SessionService:
     def cleanup_expired(self):
         with self.session_factory() as db:
             try:
-                (
+                deleted = (
                     db.query(Session)
                     .filter(
                         Session.expires_at < datetime.now(UTC)
@@ -146,6 +152,11 @@ class SessionService:
                     .delete(synchronize_session=False)
                 )
                 db.commit()
+                return {
+                    "success": True,
+                    "message": "Expired sessions cleaned up successfully",
+                    "count": deleted,
+                }
             except Exception as e:
                 db.rollback()
                 raise DatabaseError(f"Failed to cleanup expired sessions: {str(e)}")
@@ -200,8 +211,13 @@ class SessionService:
     def clear_all(self):
         with self.session_factory() as db:
             try:
-                db.query(Session).delete(synchronize_session=False)
+                deleted = db.query(Session).delete(synchronize_session=False)
                 db.commit()
+                return {
+                    "success": True,
+                    "message": "All sessions cleared successfully",
+                    "count": deleted,
+                }
             except Exception as e:
                 db.rollback()
                 raise DatabaseError(f"Failed to clear sessions: {str(e)}")

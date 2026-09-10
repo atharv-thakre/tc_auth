@@ -49,6 +49,11 @@ class GitHubOAuth:
             },
         )
 
+        return {
+            "success": True,
+            "message": "GitHub OAuth configured successfully",
+        }
+
     async def login(
         self,
         request: Request,

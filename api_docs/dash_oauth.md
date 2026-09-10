@@ -80,4 +80,9 @@ Body:
 
 Response:
 
-- `null`
+```json
+{
+  "success": true,
+  "message": "OAuth link removed successfully"
+}
+```

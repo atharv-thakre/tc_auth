@@ -40,20 +40,16 @@ class DashSessionRoutes:
 
         @self.router.delete("/")
         def destroy_session(body: DestroySession, user=current):
-            self.session_service.destroy_session(**body.model_dump())
-            return {"success": True, "message": "Session destroyed successfully"}
+            return self.session_service.destroy_session(**body.model_dump())
 
         @self.router.delete("/all")
         def destroy_all(body: DestroyAllSession, user=current):    
-            self.session_service.destroy_all(**body.model_dump())
-            return {"success": True, "message": "All sessions destroyed for account"}
+            return self.session_service.destroy_all(**body.model_dump())
 
         @self.router.delete("/cleanup")
         def cleanup(user=current):
-            self.session_service.cleanup_expired()
-            return {"success": True, "message": "Expired sessions cleaned up successfully"}
+            return self.session_service.cleanup_expired()
 
         @self.router.delete("/clear")
         def clear(user=current):
-            self.session_service.clear_all()
-            return {"success": True, "message": "All sessions cleared successfully"}
+            return self.session_service.clear_all()

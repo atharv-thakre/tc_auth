@@ -11,11 +11,15 @@ def config(
         secret_key: str,
         algorithm: str,
         session_duration_days: int,
-    ) -> None:
+    ) -> dict:
     global SECRET_KEY, ALGORITHM, SESSION_DURATION_DAYS
     SECRET_KEY = secret_key
     ALGORITHM = algorithm
     SESSION_DURATION_DAYS = session_duration_days
+    return {
+        "success": True,
+        "message": "JWT configured successfully",
+    }
 
 def load():
     return {

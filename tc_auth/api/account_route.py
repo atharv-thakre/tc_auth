@@ -16,13 +16,11 @@ class AccountRoutes:
 
         @self.router.post("/logout")
         def logout(user=current):
-            self.session_service.destroy_session(user["session"]["id"])
-            return {"success": True, "message": "Logged out successfully"}
+            return self.session_service.destroy_session(user["session"]["id"])
 
         @self.router.post("/logout-all")
         def logout_all(user=current):
-            self.session_service.destroy_all(user["account"]["id"])
-            return {"success": True, "message": "Logged out from all devices successfully"}
+            return self.session_service.destroy_all(user["account"]["id"])
 
         @self.router.get("/me")
         def me(user=current):
@@ -37,8 +35,7 @@ class AccountRoutes:
 
         @self.router.put("/update/password")
         def update_password(body: UpdatePassword, user=current):
-            self.account_service.update_password(
+            return self.account_service.update_password(
                 account_id=user["account"]["id"],
                 password=body.password,
             )
-            return {"success": True, "message": "Password updated successfully"}

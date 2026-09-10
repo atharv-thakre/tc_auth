@@ -49,6 +49,11 @@ class GoogleOAuth:
             },
         )
 
+        return {
+            "success": True,
+            "message": "Google OAuth configured successfully",
+        }
+
     async def login(
         self,
         request: Request,

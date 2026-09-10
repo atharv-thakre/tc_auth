@@ -196,6 +196,7 @@ class AccountService:
             try:
                 db.delete(account)
                 db.commit()
+                return {"success": True, "message": "Account deleted successfully"}
             except Exception as e:
                 db.rollback()
                 raise DatabaseError(f"Failed to delete account: {str(e)}")
@@ -215,6 +216,7 @@ class AccountService:
             account.password_hash = hash_password(password)
             try:
                 db.commit()
+                return {"success": True, "message": "Password updated successfully"}
             except Exception as e:
                 db.rollback()
                 raise DatabaseError(f"Failed to update password: {str(e)}")

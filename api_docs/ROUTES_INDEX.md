@@ -11,6 +11,7 @@ This folder documents the route modules in `tc_auth/api`.
 - [Admin OAuth Link Routes](dash_oauth.md)
 - [Admin OTP Routes](dash_otp.md)
 - [Admin Session Routes](dash_session.md)
+- [Standardized API Responses & Change Matrix](../tc_auth/API_RESPONSES.md)
 - [System Route Placeholder](system_route.md)
 
 Notes:

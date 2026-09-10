@@ -124,6 +124,11 @@ class OTPService:
                 db.rollback()
                 raise DatabaseError(f"Failed to clear verified OTP: {str(e)}")
 
+        return {
+            "success": True,
+            "message": "OTP verified successfully",
+        }
+
     # ==========================================================
     # DELETE
     # ==========================================================
@@ -134,22 +139,35 @@ class OTPService:
         identifier: str,
         purpose: str,
     ):
-        if not identifier or not purpose:
-            return
+        if not identifier or not isinstance(identifier, str) or not identifier.strip():
+            raise AuthError("OTP identifier is required")
+
+        if not purpose or not isinstance(purpose, str) or not purpose.strip():
+            raise AuthError("OTP purpose is required")
 
         identifier = identifier.strip()
         purpose = purpose.strip()
 
         with self.session_factory() as db:
             try:
-                db.query(OTP).filter_by(
-                    identifier=identifier,
-                    purpose=purpose,
-                ).delete()
+                deleted_count = (
+                    db.query(OTP)
+                    .filter_by(
+                        identifier=identifier,
+                        purpose=purpose,
+                    )
+                    .delete()
+                )
                 db.commit()
             except Exception as e:
                 db.rollback()
                 raise DatabaseError(f"Failed to revoke OTP: {str(e)}")
+
+        return {
+            "success": True,
+            "message": "OTP revoked successfully",
+            "count": deleted_count,
+        }
 
     # ==========================================================
     # CLEANUP
@@ -158,13 +176,23 @@ class OTPService:
     def cleanup(self):
         with self.session_factory() as db:
             try:
-                db.query(OTP).filter(
-                    OTP.expires_at < datetime.now()
-                ).delete()
+                deleted_count = (
+                    db.query(OTP)
+                    .filter(
+                        OTP.expires_at < datetime.now()
+                    )
+                    .delete()
+                )
                 db.commit()
             except Exception as e:
                 db.rollback()
                 raise DatabaseError(f"Failed to cleanup OTPs: {str(e)}")
+
+        return {
+            "success": True,
+            "message": "Expired OTPs cleaned successfully",
+            "count": deleted_count,
+        }
 
     def get_all(self, page: int = 1, limit: int = 10):
         with self.session_factory() as db:
@@ -202,11 +230,17 @@ class OTPService:
     def clear_all(self):
         with self.session_factory() as db:
             try:
-                db.query(OTP).delete(synchronize_session=False)
+                deleted_count = db.query(OTP).delete(synchronize_session=False)
                 db.commit()
             except Exception as e:
                 db.rollback()
                 raise DatabaseError(f"Failed to clear all OTPs: {str(e)}")
+
+        return {
+            "success": True,
+            "message": "All OTPs cleared successfully",
+            "count": deleted_count,
+        }
 
     # ==========================================================
     # PRIVATE

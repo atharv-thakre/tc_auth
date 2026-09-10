@@ -231,6 +231,11 @@ class OAuthService:
                 db.rollback()
                 raise DatabaseError(f"Failed to unlink OAuth account: {str(e)}")
 
+        return {
+            "success": True,
+            "message": "OAuth link removed successfully",
+        }
+
     def get_all(self, page: int = 1, limit: int = 10):
         with self.session_factory() as db:
             page = max(1, page)

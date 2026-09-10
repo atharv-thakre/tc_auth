@@ -67,7 +67,12 @@ Body:
 
 Response:
 
-- `null`
+```json
+{
+  "success": true,
+  "message": "Session destroyed successfully"
+}
+```
 
 ## DELETE `/all`
 
@@ -83,7 +88,13 @@ Body:
 
 Response:
 
-- `null`
+```json
+{
+  "success": true,
+  "message": "All sessions destroyed for account",
+  "count": 3
+}
+```
 
 ## DELETE `/cleanup`
 
@@ -91,7 +102,13 @@ Deletes expired sessions.
 
 Response:
 
-- `null`
+```json
+{
+  "success": true,
+  "message": "Expired sessions cleaned up successfully",
+  "count": 4
+}
+```
 
 ## DELETE `/clear`
 
@@ -99,4 +116,10 @@ Deletes all sessions.
 
 Response:
 
-- `null`
+```json
+{
+  "success": true,
+  "message": "All sessions cleared successfully",
+  "count": 10
+}
+```

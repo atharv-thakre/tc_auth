@@ -128,7 +128,12 @@ Body:
 
 Response:
 
-- `null`
+```json
+{
+  "success": true,
+  "message": "Email service configured successfully"
+}
+```
 
 ## POST `/github`
 
@@ -146,7 +151,12 @@ Body:
 
 Response:
 
-- `null`
+```json
+{
+  "success": true,
+  "message": "GitHub OAuth configured successfully"
+}
+```
 
 ## POST `/google`
 
@@ -164,7 +174,12 @@ Body:
 
 Response:
 
-- `null`
+```json
+{
+  "success": true,
+  "message": "Google OAuth configured successfully"
+}
+```
 
 ## POST `/jwt`
 
@@ -182,4 +197,9 @@ Body:
 
 Response:
 
-- `null`
+```json
+{
+  "success": true,
+  "message": "JWT configured successfully"
+}
+```

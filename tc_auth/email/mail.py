@@ -60,6 +60,11 @@ class EmailService:
 
         self.use_tls = use_tls
 
+        return {
+            "success": True,
+            "message": "Email service configured successfully",
+        }
+
     # ==========================================================
     # SEND
     # ==========================================================
@@ -110,6 +115,11 @@ class EmailService:
                     smtp.quit()
                 except Exception:
                     pass
+
+        return {
+            "success": True,
+            "message": f"Email sent successfully to {to}",
+        }
 
     # ==========================================================
     # OTP

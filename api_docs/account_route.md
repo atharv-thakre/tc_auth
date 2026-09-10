@@ -75,17 +75,23 @@ Destroys the current session.
 
 Response:
 
-- `null`
+```json
+{
+  "success": true,
+  "message": "Session destroyed successfully"
+}
+```
 
 Example:
 
 ```js
-await fetch(`${baseUrl}/tc-auth/logout`, {
+const res = await fetch(`${baseUrl}/tc-auth/logout`, {
   method: "POST",
   headers: {
     Authorization: `Bearer ${accessToken}`,
   },
 });
+const data = await res.json();
 ```
 
 ## POST `/logout-all`
@@ -94,17 +100,24 @@ Destroys every session for the current account.
 
 Response:
 
-- `null`
+```json
+{
+  "success": true,
+  "message": "All sessions destroyed for account",
+  "count": 2
+}
+```
 
 Example:
 
 ```js
-await fetch(`${baseUrl}/tc-auth/logout-all`, {
+const res = await fetch(`${baseUrl}/tc-auth/logout-all`, {
   method: "POST",
   headers: {
     Authorization: `Bearer ${accessToken}`,
   },
 });
+const data = await res.json();
 ```
 
 ## GET `/me`
@@ -180,12 +193,17 @@ Body:
 
 Response:
 
-- `null`
+```json
+{
+  "success": true,
+  "message": "Password updated successfully"
+}
+```
 
 Example:
 
 ```js
-await fetch(`${baseUrl}/tc-auth/update/password`, {
+const res = await fetch(`${baseUrl}/tc-auth/update/password`, {
   method: "PUT",
   headers: {
     Authorization: `Bearer ${accessToken}`,
@@ -193,4 +211,5 @@ await fetch(`${baseUrl}/tc-auth/update/password`, {
   },
   body: JSON.stringify({ password: "new-password123" }),
 });
+const data = await res.json();
 ```
