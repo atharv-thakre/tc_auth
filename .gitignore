@@ -2,6 +2,7 @@
 SAMPLE_MODULE/
 connect.py
 run.py
+changes.md
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
