@@ -26,6 +26,9 @@ def load():
 
 
 def create_access_token(data: dict) -> str:
+    if not isinstance(data, dict):
+        raise ValueError("Data payload for access token must be a dict")
+
     payload = data.copy()
     payload["exp"] = (
         int(time.time())
@@ -40,11 +43,18 @@ def create_access_token(data: dict) -> str:
 
 
 def verify_token(token: str) -> dict:
+    if not token or not isinstance(token, str):
+        raise InvalidTokenError(field="token", message="Token is missing or invalid")
+
     try:
         return jwt.decode(
             token,
             SECRET_KEY,
             algorithms=[ALGORITHM],
         )
+    except jwt.ExpiredSignatureError:
+        raise InvalidTokenError(field="token", message="Token has expired")
+    except jwt.PyJWTError as e:
+        raise InvalidTokenError(field="token", message=f"Invalid token: {str(e)}")
     except Exception:
-        raise InvalidTokenError("invalid")
+        raise InvalidTokenError(field="token", message="Invalid or expired token")
