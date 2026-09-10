@@ -1,10 +1,11 @@
-from ..jwt_handler  import create_access_token
+from ..jwt_handler import create_access_token
 from ..utils.hasher import verify_password
 from ..utils.identifier import (
     normalize_identifier,
     get_identifier_type,
 )
 from ..exceptions.error import (
+    AuthError,
     InvalidCredentialsError,
     UserNotFoundError,
 )
@@ -21,12 +22,17 @@ class AuthService:
         self.account = account
         self.session = session
 
-
     def _authenticate(
         self,
         identifier: str,
         password: str,
     ):
+        if not identifier or not isinstance(identifier, str):
+            raise InvalidCredentialsError()
+
+        if not password or not isinstance(password, str):
+            raise InvalidCredentialsError()
+
         identifier = normalize_identifier(identifier)
 
         try:
@@ -44,23 +50,29 @@ class AuthService:
         except UserNotFoundError:
             raise InvalidCredentialsError()
 
+        password_hash = account.get("password_hash")
+        if not password_hash:
+            raise InvalidCredentialsError()
+
         if not verify_password(
             password,
-            account["password_hash"],
+            password_hash,
         ):
             raise InvalidCredentialsError()
 
         account.pop("password_hash", None)
 
         return account
-    
 
     def create_login_response(
         self,
         account: dict,
-        ip_address: str | None,
-        user_agent: str | None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
     ):
+        if not account or not isinstance(account, dict) or "id" not in account:
+            raise AuthError("Invalid account data for login response")
+
         session = self.session.create_session(
             account_id=account["id"],
             ip_address=ip_address,
@@ -81,7 +93,6 @@ class AuthService:
             "account": account,
         }
 
-
     def signup(
         self,
         name: str,
@@ -94,6 +105,9 @@ class AuthService:
         ip_address: str | None = None,
         user_agent: str | None = None,
     ):
+        if not email or not password:
+            raise AuthError("Email and password are required")
+
         account = self.account.create_user(
             name=name,
             email=email,
@@ -109,7 +123,6 @@ class AuthService:
             ip_address,
             user_agent,
         )
-
 
     def login(
         self,
@@ -128,4 +141,13 @@ class AuthService:
             ip_address,
             user_agent,
         )
-    
+
+    def update_password(
+        self,
+        account_id: int,
+        password: str,
+    ):
+        return self.account.update_password(
+            account_id=account_id,
+            password=password,
+        )

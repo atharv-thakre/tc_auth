@@ -1,9 +1,7 @@
+from uuid import UUID
 from ..db.models import Account
 from ..utils.get_helper import to_dict
 from ..exceptions.error import UserNotFoundError
-from uuid import UUID
-
-
 
 
 class GetUserService:
@@ -13,7 +11,6 @@ class GetUserService:
     # ==========================================================
     # PRIVATE
     # ==========================================================
-
 
     _QUERY_FIELDS = {
         "id": Account.id,
@@ -29,6 +26,9 @@ class GetUserService:
         value,
         include_password: bool = False,
     ):
+        if value is None:
+            raise UserNotFoundError(field=column.key, value=None)
+
         with self.session_factory() as db:
             account = (
                 db.query(Account)
@@ -41,7 +41,6 @@ class GetUserService:
 
             exclude = [] if include_password else ["password_hash"]
             return to_dict(account, exclude=exclude)
-        
 
     # ==========================================================
     # PUBLIC
@@ -52,9 +51,14 @@ class GetUserService:
         account_id: int,
         include_password: bool = False,
     ):
+        try:
+            parsed_id = int(account_id)
+        except (ValueError, TypeError):
+            raise UserNotFoundError("id", account_id)
+
         return self._get_by(
             Account.id,
-            account_id,
+            parsed_id,
             include_password,
         )
 
@@ -63,9 +67,14 @@ class GetUserService:
         uid: str,
         include_password: bool = False,
     ):
+        try:
+            parsed_uid = UUID(str(uid))
+        except (ValueError, TypeError):
+            raise UserNotFoundError("uid", uid)
+
         return self._get_by(
             Account.uid,
-            uid,
+            parsed_uid,
             include_password,
         )
 
@@ -74,9 +83,12 @@ class GetUserService:
         email: str,
         include_password: bool = False,
     ):
+        if not email or not isinstance(email, str) or not email.strip():
+            raise UserNotFoundError("email", email)
+
         return self._get_by(
             Account.email,
-            email,
+            email.strip(),
             include_password,
         )
 
@@ -85,9 +97,12 @@ class GetUserService:
         handle: str,
         include_password: bool = False,
     ):
+        if not handle or not isinstance(handle, str) or not handle.strip():
+            raise UserNotFoundError("handle", handle)
+
         return self._get_by(
             Account.handle,
-            handle,
+            handle.strip(),
             include_password,
         )
 
@@ -96,29 +111,32 @@ class GetUserService:
         phone: str,
         include_password: bool = False,
     ):
+        if not phone or not isinstance(phone, str) or not phone.strip():
+            raise UserNotFoundError("phone", phone)
+
         return self._get_by(
             Account.phone,
-            phone,
+            phone.strip(),
             include_password,
         )
-    
-    
+
     def find_by_email(
         self,
         email: str,
         include_password: bool = False,
     ):
-        with self.session_factory() as db:
+        if not email or not isinstance(email, str) or not email.strip():
+            return None
 
+        with self.session_factory() as db:
             account = (
                 db.query(Account)
-                .filter(Account.email == email)
+                .filter(Account.email == email.strip())
                 .first()
             )
 
             if account is None:
                 return None
-            
+
             exclude = [] if include_password else ["password_hash"]
             return to_dict(account, exclude=exclude)
-            

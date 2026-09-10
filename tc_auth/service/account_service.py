@@ -9,8 +9,9 @@ from ..exceptions.error import (
     HandleAlreadyExistsError,
     PhoneAlreadyExistsError,
     UserNotFoundError,
+    InvalidFieldError,
+    DatabaseError,
 )
-
 
 
 class AccountService:
@@ -31,17 +32,22 @@ class AccountService:
         "handle": Account.handle,
     }
 
-#===========================Internal Helpers===========================
-# GET ACCOUNT BY ID & UserNotFoundError HANDLER
+    # ===========================Internal Helpers===========================
+    # GET ACCOUNT BY ID & UserNotFoundError HANDLER
 
     def _get_account(
         self,
         db,
         account_id: int,
     ):
+        try:
+            parsed_id = int(account_id)
+        except (ValueError, TypeError):
+            raise UserNotFoundError("id", account_id)
+
         account = (
             db.query(Account)
-            .filter(Account.id == account_id)
+            .filter(Account.id == parsed_id)
             .first()
         )
 
@@ -49,9 +55,8 @@ class AccountService:
             raise UserNotFoundError("id", account_id)
 
         return account
-    
-    
-# HANDLE INTEGRITY ERROR & ROLLBACK SESSION
+
+    # HANDLE INTEGRITY ERROR & ROLLBACK SESSION
 
     def _handle_integrity_error(
         self,
@@ -60,21 +65,34 @@ class AccountService:
     ):
         db.rollback()
 
-        message = str(error.orig)
+        message = str(error.orig) if error.orig else str(error)
+        msg_lower = message.lower()
 
-        if "uq_accounts_email" in message:
+        if (
+            "uq_accounts_email" in msg_lower
+            or "accounts.email" in msg_lower
+            or ("unique" in msg_lower and "email" in msg_lower)
+        ):
             raise EmailAlreadyExistsError()
 
-        if "uq_accounts_handle" in message:
+        if (
+            "uq_accounts_handle" in msg_lower
+            or "accounts.handle" in msg_lower
+            or ("unique" in msg_lower and "handle" in msg_lower)
+        ):
             raise HandleAlreadyExistsError()
 
-        if "uq_accounts_phone" in message:
+        if (
+            "uq_accounts_phone" in msg_lower
+            or "accounts.phone" in msg_lower
+            or ("unique" in msg_lower and "phone" in msg_lower)
+        ):
             raise PhoneAlreadyExistsError()
 
-        raise error
-    
-#=============================Public Methods===========================
-# CREATE USER
+        raise DatabaseError(f"Database integrity error: {message}")
+
+    # =============================Public Methods===========================
+    # CREATE USER
 
     def create_user(
         self,
@@ -88,7 +106,6 @@ class AccountService:
         status: str | None = None,
     ):
         with self.session_factory() as db:
-
             account = Account()
 
             if name is not None:
@@ -119,12 +136,13 @@ class AccountService:
                 db.add(account)
                 db.commit()
                 db.refresh(account)
-
             except IntegrityError as e:
                 self._handle_integrity_error(db, e)
+            except Exception as e:
+                db.rollback()
+                raise DatabaseError(f"Failed to create account: {str(e)}")
 
             return self.get_user.by_id(account.id)
-
 
     # UPDATE USER
 
@@ -139,7 +157,6 @@ class AccountService:
         phone: str | None = None,
     ):
         with self.session_factory() as db:
-
             account = self._get_account(db, account_id)
 
             if name is not None:
@@ -160,55 +177,68 @@ class AccountService:
             try:
                 db.commit()
                 db.refresh(account)
-
             except IntegrityError as e:
                 self._handle_integrity_error(db, e)
+            except Exception as e:
+                db.rollback()
+                raise DatabaseError(f"Failed to update account: {str(e)}")
 
             return self.get_user.by_id(account.id)
-        
-        
-# DELETE ACCOUNT
+
+    # DELETE ACCOUNT
 
     def delete_user(
         self,
         account_id: int,
     ):
         with self.session_factory() as db:
-
             account = self._get_account(db, account_id)
-            db.delete(account)
-            db.commit()
+            try:
+                db.delete(account)
+                db.commit()
+            except Exception as e:
+                db.rollback()
+                raise DatabaseError(f"Failed to delete account: {str(e)}")
 
-
-# CHANGE PASSWORD
+    # CHANGE PASSWORD
 
     def update_password(
         self,
         account_id: int,
         password: str,
     ):
-        with self.session_factory() as db:
+        if not password or not isinstance(password, str):
+            raise InvalidFieldError("password", "Password cannot be empty")
 
+        with self.session_factory() as db:
             account = self._get_account(db, account_id)
             account.password_hash = hash_password(password)
-            db.commit()
+            try:
+                db.commit()
+            except Exception as e:
+                db.rollback()
+                raise DatabaseError(f"Failed to update password: {str(e)}")
 
-
-# CHANGE ROLE
+    # CHANGE ROLE
 
     def update_role(
         self,
         account_id: int,
         role: str,
     ):
-        with self.session_factory() as db:
+        if not role or not isinstance(role, str):
+            raise InvalidFieldError("role", "Role cannot be empty")
 
+        with self.session_factory() as db:
             account = self._get_account(db, account_id)
             account.role = role
-            db.commit()
+            try:
+                db.commit()
+            except Exception as e:
+                db.rollback()
+                raise DatabaseError(f"Failed to update role: {str(e)}")
 
-
-# CHANGE STATUS
+    # CHANGE STATUS
 
     def update_status(
         self,
@@ -216,13 +246,15 @@ class AccountService:
         status: str | None,
     ):
         with self.session_factory() as db:
-
             account = self._get_account(db, account_id)
             account.status = status
-            db.commit()
+            try:
+                db.commit()
+            except Exception as e:
+                db.rollback()
+                raise DatabaseError(f"Failed to update status: {str(e)}")
 
-
-# SUPER UPDATE USER
+    # SUPER UPDATE USER
 
     def super_update(
         self,
@@ -238,7 +270,6 @@ class AccountService:
         password: str | None = None,
     ):
         with self.session_factory() as db:
-
             account = self._get_account(db, account_id)
 
             if name is not None:
@@ -268,13 +299,18 @@ class AccountService:
             try:
                 db.commit()
                 db.refresh(account)
-
             except IntegrityError as e:
                 self._handle_integrity_error(db, e)
+            except Exception as e:
+                db.rollback()
+                raise DatabaseError(f"Failed to super update account: {str(e)}")
 
+            return self.get_user.by_id(account.id)
 
     def get_all(self, page: int = 1, limit: int = 10):
         with self.session_factory() as db:
+            page = max(1, page)
+            limit = max(1, limit)
             offset = (page - 1) * limit
 
             accounts = (
@@ -282,26 +318,26 @@ class AccountService:
                 .order_by(Account.id.desc())
                 .offset(offset)
                 .limit(limit)
-                .all()  
+                .all()
             )
 
             return to_list_dict(accounts)
-
-
 
     def query(self, field: str, value: str):
         column = self._QUERY_FIELDS.get(field)
 
         if column is None:
-            raise ValueError(f"Invalid query field: {field}")
+            raise InvalidFieldError(
+                field,
+                f"Invalid query field: '{field}'. Supported fields: {list(self._QUERY_FIELDS.keys())}",
+            )
 
         with self.session_factory() as db:
-
             if field == "id":
                 try:
                     parsed_value = int(value)
-                except ValueError:
-                    raise ValueError("id must be an integer")
+                except (ValueError, TypeError):
+                    raise InvalidFieldError("id", "Field 'id' must be an integer")
 
                 accounts = (
                     db.query(Account)
@@ -311,9 +347,9 @@ class AccountService:
 
             elif field == "uid":
                 try:
-                    parsed_value = UUID(value)
-                except ValueError:
-                    raise ValueError("uid must be a valid UUID")
+                    parsed_value = UUID(str(value))
+                except (ValueError, TypeError):
+                    raise InvalidFieldError("uid", "Field 'uid' must be a valid UUID")
 
                 accounts = (
                     db.query(Account)
@@ -328,4 +364,4 @@ class AccountService:
                     .all()
                 )
 
-            return to_list_dict(accounts)   
+            return to_list_dict(accounts)
