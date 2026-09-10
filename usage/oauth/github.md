@@ -77,7 +77,7 @@ Call this during application setup before using `login()` or
 `callback()`.
 
 ``` python
-auth.github_oauth.config(...)
+auth.github.config(...)
 ```
 
 ## Parameters
@@ -101,11 +101,20 @@ auth.github_oauth.config(...)
 ## Example
 
 ``` python
-auth.github_oauth.config(
+auth.github.config(
     client_id="YOUR_GITHUB_CLIENT_ID",
     client_secret="YOUR_GITHUB_CLIENT_SECRET",
-    redirect_uri="https://api.example.com/oauth/github/callback",
+    redirect_uri="https://api.example.com/tc-auth/github/callback",
 )
+```
+
+## Returns
+
+``` python
+{
+    "success": True,
+    "message": "GitHub OAuth configured successfully"
+}
 ```
 
 > The `redirect_uri` must exactly match the callback URL configured in
@@ -118,7 +127,7 @@ auth.github_oauth.config(
 Returns the currently configured GitHub OAuth settings.
 
 ``` python
-config = auth.github_oauth.load()
+config = auth.github.load()
 ```
 
 ## Returns
@@ -143,7 +152,7 @@ Starts the GitHub OAuth login flow.
 The user is redirected to GitHub's authorization page.
 
 ``` python
-await auth.github_oauth.login(...)
+await auth.github.login(...)
 ```
 
 ## Parameters
@@ -167,7 +176,7 @@ The `frontend_url` is temporarily stored in the session and used by
 ``` python
 @app.get("/oauth/github/login")
 async def github_login(request: Request):
-    return await auth.github_oauth.login(
+    return await auth.github.login(
         request=request,
         frontend_url="https://app.example.com",
     )
@@ -186,7 +195,7 @@ A redirect response to GitHub's OAuth authorization page.
 Handles the callback sent by GitHub after authentication.
 
 ``` python
-await auth.github_oauth.callback(...)
+await auth.github.callback(...)
 ```
 
 ## Parameters
@@ -220,7 +229,7 @@ The callback:
 ``` python
 @app.get("/oauth/github/callback")
 async def github_callback(request: Request):
-    return await auth.github_oauth.callback(
+    return await auth.github.callback(
         request=request,
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
@@ -319,23 +328,23 @@ authenticated session.
 
 ``` python
 from fastapi import FastAPI, Request
-from usage import auth
+from connect import auth
 
 app = FastAPI()
 
 
 # Configure GitHub OAuth once during application setup.
-auth.github_oauth.config(
+auth.github.config(
     client_id="YOUR_GITHUB_CLIENT_ID",
     client_secret="YOUR_GITHUB_CLIENT_SECRET",
-    redirect_uri="https://api.example.com/oauth/github/callback",
+    redirect_uri="https://api.example.com/tc-auth/github/callback",
 )
 
 
 # Start GitHub OAuth.
 @app.get("/oauth/github/login")
 async def github_login(request: Request):
-    return await auth.github_oauth.login(
+    return await auth.github.login(
         request=request,
         frontend_url="https://app.example.com",
     )
@@ -344,7 +353,7 @@ async def github_login(request: Request):
 # Handle GitHub OAuth callback.
 @app.get("/oauth/github/callback")
 async def github_callback(request: Request):
-    return await auth.github_oauth.callback(
+    return await auth.github.callback(
         request=request,
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
@@ -362,10 +371,10 @@ For example:
 
 ``` text
 GitHub OAuth application:
-https://api.example.com/oauth/github/callback
+https://api.example.com/tc-auth/github/callback
 
 Application:
-redirect_uri="https://api.example.com/oauth/github/callback"
+redirect_uri="https://api.example.com/tc-auth/github/callback"
 ```
 
 A mismatch between these URLs will cause the OAuth flow to fail.
@@ -389,7 +398,7 @@ A mismatch between these URLs will cause the OAuth flow to fail.
 
   Method         Purpose                          Return
   -------------- -------------------------------- -------------------
-  `config()`     Configure GitHub OAuth           `None`
+  `config()`     Configure GitHub OAuth           `dict`
   `load()`       Get current configuration        `dict`
   `login()`      Start GitHub authentication      Redirect response
   `callback()`   Complete GitHub authentication   Redirect response
@@ -400,21 +409,21 @@ A mismatch between these URLs will cause the OAuth flow to fail.
 
 ``` python
 from fastapi import Request
-from usage import auth
+from connect import auth
 
 
 # Configure
-auth.github_oauth.config(
+auth.github.config(
     client_id="YOUR_GITHUB_CLIENT_ID",
     client_secret="YOUR_GITHUB_CLIENT_SECRET",
-    redirect_uri="https://api.example.com/oauth/github/callback",
+    redirect_uri="https://api.example.com/tc-auth/github/callback",
 )
 
 
 # Start OAuth
 @app.get("/oauth/github/login")
 async def github_login(request: Request):
-    return await auth.github_oauth.login(
+    return await auth.github.login(
         request=request,
         frontend_url="https://app.example.com",
     )
@@ -423,7 +432,7 @@ async def github_login(request: Request):
 # Handle callback
 @app.get("/oauth/github/callback")
 async def github_callback(request: Request):
-    return await auth.github_oauth.callback(
+    return await auth.github.callback(
         request=request,
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),

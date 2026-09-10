@@ -1,4 +1,4 @@
-from usage import auth
+from connect import auth
 
 
 # ==========================================================
@@ -130,7 +130,11 @@ config = auth.email.load()
 #
 # Returns:
 #
-#     None
+#     dict:
+#     {
+#         "success": True,
+#         "message": "Email sent successfully"
+#     }
 #
 # Example - plain text:
 #
@@ -315,13 +319,13 @@ auth.email.send_verify_email(
 # ==========================================================
 #
 # config()
-#     -> None
+#     -> dict containing success and message
 #
 # load()
 #     -> dict
 #
 # send()
-#     -> None
+#     -> dict containing success and message
 #
 # send_otp()
 #     -> dict containing expires_at

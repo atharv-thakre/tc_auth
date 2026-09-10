@@ -1,231 +1,50 @@
-from usage import auth
-
+from connect import auth
 
 # ==========================================================
-# CREATE SESSION
+# SESSION SERVICE USAGE
 # ==========================================================
-#
-# Creates a new authentication session for an account.
-#
-# Parameters:
-#     account_id (int):
-#         ID of the account for which the session is created.
-#
-#     ip_address (str):
-#         IP address of the client.
-#
-#     user_agent (str):
-#         User-Agent of the client.
-#
-# Returns:
-#     dict:
-#     {
-#         "session_id": session.id,
-#         "token": token
-#     }
-#
-# NOTE:
-#     The returned token is the session token that can be used
-#     for authentication. The database stores its hash rather
-#     than the raw token.
-#
-auth.session.create_session(
+
+# 1. Create a new session
+session = auth.session.create_session(
     account_id=1,
-    ip_address="[IP_ADDRESS]",
-    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+    ip_address="127.0.0.1",
+    user_agent="Mozilla/5.0",
 )
 
-
-# ==========================================================
-# GET SESSION BY ID
-# ==========================================================
-#
-# Retrieves a session using its numeric session ID.
-#
-# Parameters:
-#     session_id (int):
-#         ID of the session.
-#
-# Returns:
-#     dict:
-#         Session object.
-#
-# Example session object:
-#
-#     {
-#         "id": 1,
-#         "account_id": 1,
-#         "token_hash": "...",
-#         "ip_address": "2405:201:301a:1a0b:90a:b200:b160:f17e",
-#         "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-#         "expires_at": "2026-08-12 00:11:03.646932",
-#         "created_at": "2026-08-12 00:11:03.646932"
-#     }
-#
-auth.session.by_id(
+# 2. Get session by ID
+session_data = auth.session.by_id(
     session_id=1,
 )
 
-
-# ==========================================================
-# GET SESSIONS BY ACCOUNT
-# ==========================================================
-#
-# Retrieves the sessions associated with an account.
-#
-# Parameters:
-#     account_id (int):
-#         ID of the account.
-#
-# Returns:
-#     list[dict]:
-#         List of session objects belonging to the account.
-#
-auth.session.by_account(
+# 3. Get sessions by account ID
+account_sessions = auth.session.by_account(
     account_id=1,
 )
 
-
-# ==========================================================
-# DESTROY SESSION
-# ==========================================================
-#
-# Deletes a specific session from the database.
-#
-# Parameters:
-#     session_id (int):
-#         ID of the session to delete.
-#
-# Returns:
-#     None
-#
-auth.session.destroy_session(
+# 4. Destroy a single session
+destroy_res = auth.session.destroy_session(
     session_id=1,
 )
 
-
-# ==========================================================
-# DESTROY ALL ACCOUNT SESSIONS
-# ==========================================================
-#
-# Deletes all sessions belonging to an account.
-#
-# Parameters:
-#     account_id (int):
-#         ID of the account.
-#
-# Returns:
-#     None
-#
-auth.session.destroy_all(
+# 5. Destroy all sessions for an account
+destroy_all_res = auth.session.destroy_all(
     account_id=1,
 )
 
+# 6. Cleanup expired sessions
+cleanup_res = auth.session.cleanup_expired()
 
-# ==========================================================
-# CLEANUP EXPIRED SESSIONS
-# ==========================================================
-#
-# Deletes all expired sessions from the database.
-#
-# Parameters:
-#     None
-#
-# Returns:
-#     None
-#
-auth.session.cleanup_expired()
+# 7. Clear all sessions immediately
+clear_res = auth.session.clear_all()
 
-
-# ==========================================================
-# CLEAR ALL SESSIONS
-# ==========================================================
-#
-# Immediately deletes all session records from the database.
-#
-# Parameters:
-#     None
-#
-# WARNING:
-#     This removes every session, including active sessions.
-#
-# Returns:
-#     None
-#
-auth.session.clear_all()
-
-
-# ==========================================================
-# GET ALL SESSIONS
-# ==========================================================
-#
-# Returns a paginated list of session objects.
-#
-# Parameters:
-#
-#     page (int, optional):
-#         Page number to retrieve.
-#         Defaults to 1.
-#
-#     limit (int, optional):
-#         Number of sessions returned per page.
-#         Defaults to 10.
-#
-# Pagination:
-#     Pagination divides all session records into smaller
-#     pages.
-#
-#     Example with limit=10:
-#
-#         page=1 -> Records 1-10
-#         page=2 -> Records 11-20
-#         page=3 -> Records 21-30
-#
-#     Increase the page number to retrieve the next set
-#     of sessions.
-#
-# Returns:
-#     list[dict]:
-#         A list of session objects.
-#
-auth.session.get_all(
+# 8. Get all sessions (paginated)
+all_sessions = auth.session.get_all(
     page=1,
     limit=10,
 )
 
-
-# ==========================================================
-# QUERY SESSIONS
-# ==========================================================
-#
-# Searches session records using a specific field.
-#
-# Supported fields:
-#     - id
-#     - sid
-#     - ip
-#     - token
-#
-# Parameters:
-#
-#     field (str):
-#         Session field to search.
-#
-#     value (str):
-#         Value to search for.
-#         Typecasting is handled automatically.
-#
-# Matching:
-#     - Partial matching is supported for token and IP.
-#     - Other fields use their supported matching behavior.
-#
-# Returns:
-#     list[dict]:
-#         A list of matching session objects.
-#
-# Example:
-#
-auth.session.query(
+# 9. Query sessions by field (id, sid, ip, token)
+queried_sessions = auth.session.query(
     field="id",
     value="1",
 )

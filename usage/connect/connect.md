@@ -1,436 +1,205 @@
-# TC-Auth FastAPI Setup
+# TC-Auth FastAPI Setup & Architecture
 
-This guide shows how to initialize `tc-auth` in a FastAPI application
-and configure its database, CORS, email, OAuth, and JWT services.
+This guide explains how to structure and initialize `tc_auth` in a FastAPI application, configure its database, CORS, email, OAuth, and JWT services, and avoid circular dependencies.
 
-------------------------------------------------------------------------
+---
 
-# 1. Imports
+## Architecture: The `connect.py` + `run.py` Pattern
 
-``` python
-from tc_auth import Auth
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+In production and modular FastAPI projects, feature routes located in different files/packages frequently need to import `auth` (e.g., `from connect import auth`) to use dependencies such as `auth.deps.get_current`, `auth.role.require("admin")`, or services like `auth.account`.
+
+If `app = FastAPI()` and `auth = Auth(engine, app)` are initialized in the same file alongside route imports, importing `auth` from feature modules triggers the creation of `app` before route modules are loaded, resulting in **circular dependency errors**.
+
+### Why Decouple `connect.py` and `run.py`?
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 1. connect.py                                               │
+│    - Creates DB engine & session factory                    │
+│    - Initializes `auth = Auth(engine=engine)`               │
+│    - Configures JWT, Email, Google OAuth, GitHub OAuth      │
+└──────────────┬───────────────────────────────┬──────────────┘
+               │                               │
+               ▼                               ▼
+┌──────────────────────────────┐ ┌──────────────────────────────┐
+│ 2. Feature Routers           │ │ 3. run.py                    │
+│    - Imports `auth`          │ │    - Creates `app = FastAPI()`
+│    - Uses `auth.deps`        │ │    - Configures CORS         │
+│    - Uses `auth.role`        │ │    - `auth.include_routes()` │
+│    - No circular import!     │ │    - `app.include_router()`  │
+└──────────────────────────────┘ └──────────────────────────────┘
+```
+
+1. **`connect.py`** is the single source of truth for the database engine, Auth instance, and service configurations.
+2. **Feature routers** import `auth` from `connect.py` cleanly without needing the `app` instance.
+3. **`run.py`** imports `app`, `auth` from `connect`, attaches middleware, wires routes via `auth.include_routes(app)`, includes feature routers, and launches the server.
+
+---
+
+## 1. `connect.py` Implementation
+
+```python
 from sqlalchemy import create_engine
-```
-
-You can also import all available modules and dependencies with:
-
-``` python
-from tc_auth import *
-```
-
-This can provide components such as `Auth`, `FastAPI`, `CORSMiddleware`,
-`create_engine`, and other exported modules.
-
-------------------------------------------------------------------------
-
-# 2. Create the FastAPI Application
-
-``` python
-app = FastAPI()
-```
-
-This creates the FastAPI application that will be used by `tc-auth`.
-
-------------------------------------------------------------------------
-
-# 3. Configure the Database
-
-Create a SQLAlchemy engine for the database used by `tc-auth`.
-
-``` python
-engine = create_engine(
-    "postgresql://workspace:admin@localhost:5432/tc_auth"
-)
-```
-
-Replace the database URL with your own database credentials and database
-name.
-
-------------------------------------------------------------------------
-
-# 4. Initialize `Auth`
-
-Create the main `Auth` instance by passing the database engine and
-FastAPI application.
-
-``` python
-auth = Auth(
-    engine=engine,
-    app=app,
-)
-```
-
-The `auth` object provides access to the tc-auth services, including:
-
-``` text
-auth.account
-auth.oauth
-auth.session
-auth.otp
-auth.email
-auth.jwt
-auth.deps
-auth.roles
-auth.status
-auth.google
-auth.github
-auth.dashboard
-```
-
-------------------------------------------------------------------------
-
-# 5. Configure CORS
-
-CORS should be configured when using the tc-auth dashboard.
-
-Without the correct CORS configuration, the dashboard frontend may not
-be able to communicate with the authentication API.
-
-``` python
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "https://app.totalchaos.online",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-```
-
-## Dashboard Origin
-
-The dashboard frontend must be allowed to access the API.
-
-Example:
-
-``` text
-https://app.totalchaos.online
-```
-
-> **Production:** Prefer specifying trusted frontend origins instead of
-> using `allow_origins=["*"]`.
-
-------------------------------------------------------------------------
-
-# 6. Configure Email
-
-Configure the SMTP service used by tc-auth for normal emails and OTP
-emails.
-
-Example using Gmail SMTP:
-
-``` python
-auth.email.config(
-    host="smtp.gmail.com",
-    port=587,
-    username="your-email@gmail.com",
-    password="your-app-password",
-    sender="your-email@gmail.com",
-    sender_name="Total Chaos",
-    use_tls=True,
-)
-```
-
-## Parameters
-
-  Parameter       Description
-  --------------- ---------------------------------------
-  `host`          SMTP server hostname.
-  `port`          SMTP server port.
-  `username`      SMTP authentication username.
-  `password`      SMTP authentication password.
-  `sender`        Sender email address.
-  `sender_name`   Optional sender display name.
-  `use_tls`       Enables STARTTLS. Defaults to `True`.
-
-### Security
-
-Do not hard-code SMTP passwords in production.
-
-Use environment variables or a secure secret-management system.
-
-------------------------------------------------------------------------
-
-# 7. Configure Google OAuth
-
-Configure Google OAuth authentication using the Google OAuth credentials
-created for your application.
-
-Google Cloud credentials:
-
-`https://console.cloud.google.com/apis/credentials`
-
-``` python
-auth.google.config(
-    client_id="your-google-client-id",
-    client_secret="your-google-client-secret",
-    redirect_uri=(
-        "https://app.totalchaos.online/"
-        "tc-auth/google/callback"
-    ),
-)
-```
-
-## Parameters
-
-  Parameter         Description
-  ----------------- -----------------------------
-  `client_id`       Google OAuth client ID.
-  `client_secret`   Google OAuth client secret.
-  `redirect_uri`    Google OAuth callback URL.
-
-The `redirect_uri` must exactly match the callback URL registered with
-Google.
-
-------------------------------------------------------------------------
-
-# 8. Configure GitHub OAuth
-
-Create a GitHub OAuth App and obtain its Client ID and Client Secret.
-
-Then configure it:
-
-``` python
-auth.github.config(
-    client_id="your-github-client-id",
-    client_secret="your-github-client-secret",
-    redirect_uri=(
-        "https://app.totalchaos.online/"
-        "tc-auth/github/callback"
-    ),
-)
-```
-
-## Parameters
-
-  Parameter         Description
-  ----------------- -----------------------------
-  `client_id`       GitHub OAuth client ID.
-  `client_secret`   GitHub OAuth client secret.
-  `redirect_uri`    GitHub OAuth callback URL.
-
-The callback URL configured in GitHub must exactly match the
-`redirect_uri` used by the application.
-
-------------------------------------------------------------------------
-
-# 9. Configure JWT
-
-JWT configuration is optional.
-
-`tc-auth` provides default JWT configuration, so you do not need to call
-`auth.jwt.config()` unless you want to customize it.
-
-Example custom configuration:
-
-``` python
-auth.jwt.config(
-    secret_key="your-super-secret-key",
-    algorithm="HS256",
-    session_duration_days=7,
-)
-```
-
-## Parameters
-
-  Parameter                 Description
-  ------------------------- ----------------------------------------
-  `secret_key`              Secret used to sign and verify JWTs.
-  `algorithm`               JWT signing algorithm.
-  `session_duration_days`   Token/session validity period in days.
-
-## Default Configuration
-
-If `auth.jwt.config()` is not called, the library uses its built-in
-default JWT configuration.
-
-## Security
-
-Use a strong, randomly generated secret key in production.
-
-Never commit the JWT secret key to Git.
-
-------------------------------------------------------------------------
-
-# 10. Run the Application
-
-Use Uvicorn to start the FastAPI application.
-
-``` python
-def run():
-    import uvicorn
-
-    uvicorn.run(
-        "connect:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-    )
-```
-
-Then use the Python entry point:
-
-``` python
-if __name__ == "__main__":
-    run()
-```
-
-Run the application with:
-
-``` bash
-python connect.py
-```
-
-The application will listen on:
-
-``` text
-http://0.0.0.0:8000
-```
-
-------------------------------------------------------------------------
-
-# Complete Setup
-
-``` python
 from tc_auth import Auth
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import create_engine
 
-
-# ==========================================================
-# APPLICATION
-# ==========================================================
-
-app = FastAPI()
-
-
-# ==========================================================
-# DATABASE
-# ==========================================================
-
+# 1. Create the SQLAlchemy Engine
 engine = create_engine(
     "postgresql://workspace:admin@localhost:5432/tc_auth"
 )
 
+# 2. Instantiate Auth with the engine
+auth = Auth(engine=engine)
 
-# ==========================================================
-# TC-AUTH
-# ==========================================================
-
-auth = Auth(
-    engine=engine,
-    app=app,
-)
-
-
-# ==========================================================
-# CORS
-# ==========================================================
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "https://app.totalchaos.online",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-# ==========================================================
-# EMAIL
-# ==========================================================
-
-auth.email.config(
-    host="smtp.gmail.com",
-    port=587,
-    username="your-email@gmail.com",
-    password="your-app-password",
-    sender="your-email@gmail.com",
-    sender_name="Total Chaos",
-    use_tls=True,
-)
-
-
-# ==========================================================
-# GOOGLE OAUTH
-# ==========================================================
-
-auth.google.config(
-    client_id="your-google-client-id",
-    client_secret="your-google-client-secret",
-    redirect_uri=(
-        "https://app.totalchaos.online/"
-        "tc-auth/google/callback"
-    ),
-)
-
-
-# ==========================================================
-# GITHUB OAUTH
-# ==========================================================
-
-auth.github.config(
-    client_id="your-github-client-id",
-    client_secret="your-github-client-secret",
-    redirect_uri=(
-        "https://app.totalchaos.online/"
-        "tc-auth/github/callback"
-    ),
-)
-
-
-# ==========================================================
-# JWT
-# ==========================================================
-#
-# Optional. Remove this section if the default JWT
-# configuration is sufficient.
-
+# 3. Configure JWT (Optional - default settings apply if omitted)
 auth.jwt.config(
     secret_key="your-super-secret-key",
     algorithm="HS256",
     session_duration_days=7,
 )
 
+# 4. Configure Email Service (Optional - required for email/OTP features)
+auth.email.config(
+    host="smtp.gmail.com",
+    port=587,
+    username="your-email@gmail.com",
+    password="your-app-password",
+    sender="your-email@gmail.com",
+    sender_name="My Application",
+    use_tls=True,
+)
 
-# ==========================================================
-# SERVER
-# ==========================================================
+# 5. Configure Google OAuth (Optional)
+auth.google.config(
+    client_id="your-google-client-id",
+    client_secret="your-google-client-secret",
+    redirect_uri="https://app.example.com/tc-auth/google/callback",
+)
+
+# 6. Configure GitHub OAuth (Optional)
+auth.github.config(
+    client_id="your-github-client-id",
+    client_secret="your-github-client-secret",
+    redirect_uri="https://app.example.com/tc-auth/github/callback",
+)
+```
+
+---
+
+## 2. Feature Module Example (`routers/profile.py`)
+
+Feature routers import `auth` from `connect` safely:
+
+```python
+from fastapi import APIRouter, Depends
+from connect import auth
+
+router = APIRouter(prefix="/user", tags=["User Profile"])
+
+@router.get("/profile")
+def get_profile(user=Depends(auth.deps.get_current)):
+    return {
+        "account": user["account"],
+        "session": user["session"],
+    }
+
+@router.get("/admin-settings")
+def admin_settings(admin=Depends(auth.role.require("admin"))):
+    return {"status": "Access granted to admin"}
+```
+
+---
+
+## 3. `run.py` Implementation
+
+```python
+import uvicorn
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from connect import auth
+from routers.profile import router as profile_router
+
+app = FastAPI(title="FastAPI with tc_auth")
+
+# Configure CORS (Important for dashboard and frontend apps)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://app.totalchaos.online", "http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Wire all tc_auth routes (Login, Signup, OAuth, Profiles, and Admin Dashboard)
+auth.include_routes(app, prefix="/tc-auth")
+
+# Include your application's feature routers
+app.include_router(profile_router)
 
 def run():
-    import uvicorn
-
     uvicorn.run(
-        "connect:app",
+        "run:app",
         host="0.0.0.0",
         port=8000,
         reload=True,
     )
 
-
 if __name__ == "__main__":
     run()
 ```
 
-------------------------------------------------------------------------
+---
 
-# Configuration Checklist
+## 4. Alternative: Single-File Setup (`main.py`)
 
-Before running the application, verify:
+For simple prototypes or single-file scripts where circular dependencies are not an issue:
 
--   [ ] Database URL is correct.
--   [ ] `Auth` is initialized with the database engine and FastAPI app.
--   [ ] Dashboard frontend origin is allowed by CORS.
--   [ ] SMTP credentials are configured if email/OTP features are used.
--   [ ] Google OAuth credentials are configured if Google login is used.
--   [ ] GitHub OAuth credentials are configured if GitHub login is used.
--   [ ] OAuth callback URLs exactly match the provider configuration.
--   [ ] JWT secret is configured securely if custom JWT settings are
-    used.
--   [ ] Secrets are not committed to Git.
+```python
+import uvicorn
+from fastapi import FastAPI
+from sqlalchemy import create_engine
+from tc_auth import Auth
+
+app = FastAPI()
+engine = create_engine("sqlite:///./test.db")
+
+# Passing `app` automatically registers routes, session middleware, and exception handlers
+auth = Auth(engine=engine, app=app)
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+```
+
+---
+
+## 5. Available `Auth` Services & Attributes
+
+The `auth` object provides direct access to all components:
+
+| Attribute | Service / Component | Purpose |
+|---|---|---|
+| `auth.account` | `AccountService` | Manage and update accounts |
+| `auth.service` | `AuthService` | Signup, login, password update, and token creation |
+| `auth.session` | `SessionService` | Create, destroy, clean up, and query sessions |
+| `auth.otp` | `OTPService` | Create, verify, revoke, and clear OTPs |
+| `auth.get_user` | `GetUserService` | Query accounts by email, id, uid, handle, or phone |
+| `auth.deps` | `AuthDeps` | Dependencies: `get_current`, `get_current_account`, etc. |
+| `auth.role` | `RoleDeps` | Authorization guards: `require`, `allow`, `block` |
+| `auth.status` | `StatusDeps` | Status guards: `require`, `allow`, `block` |
+| `auth.email` | `EmailService` | SMTP configuration, email delivery, OTP emails |
+| `auth.jwt` | `jwt_handler` | JWT configuration, token encoding and decoding |
+| `auth.google` | `GoogleOAuth` | Google OAuth configuration, login, and callback |
+| `auth.github` | `GitHubOAuth` | GitHub OAuth configuration, login, and callback |
+| `auth.dashboard` | `DashboardService` | Resource counts and system statistics |
+
+---
+
+## 6. Table Lifecycle Management
+
+```python
+# Create all tables defined in tc_auth models
+auth.init()
+
+# Drop all tc_auth tables from database (useful during automated tests / teardown)
+auth.destroy()
+```

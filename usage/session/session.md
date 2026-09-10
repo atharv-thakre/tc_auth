@@ -147,7 +147,7 @@ Deletes a specific session.
 ## Example
 
 ``` python
-auth.session.destroy_session(
+result = auth.session.destroy_session(
     session_id=1,
 )
 ```
@@ -155,7 +155,10 @@ auth.session.destroy_session(
 ## Returns
 
 ``` python
-None
+{
+    "success": True,
+    "message": "Session destroyed successfully"
+}
 ```
 
 ------------------------------------------------------------------------
@@ -173,7 +176,7 @@ Deletes all sessions belonging to an account.
 ## Example
 
 ``` python
-auth.session.destroy_all(
+result = auth.session.destroy_all(
     account_id=1,
 )
 ```
@@ -181,7 +184,11 @@ auth.session.destroy_all(
 ## Returns
 
 ``` python
-None
+{
+    "success": True,
+    "message": "All sessions destroyed for account",
+    "count": 2
+}
 ```
 
 ------------------------------------------------------------------------
@@ -195,13 +202,17 @@ Takes no arguments.
 ## Example
 
 ``` python
-auth.session.cleanup_expired()
+result = auth.session.cleanup_expired()
 ```
 
 ## Returns
 
 ``` python
-None
+{
+    "success": True,
+    "message": "Expired sessions cleaned up successfully",
+    "count": 5
+}
 ```
 
 ------------------------------------------------------------------------
@@ -217,13 +228,17 @@ Takes no arguments.
 ## Example
 
 ``` python
-auth.session.clear_all()
+result = auth.session.clear_all()
 ```
 
 ## Returns
 
 ``` python
-None
+{
+    "success": True,
+    "message": "All sessions cleared successfully",
+    "count": 10
+}
 ```
 
 ------------------------------------------------------------------------
@@ -330,7 +345,7 @@ sessions = auth.session.query(
 # Quick Usage
 
 ``` python
-from usage import auth
+from connect import auth
 
 session = auth.session.create_session(
     account_id=1,

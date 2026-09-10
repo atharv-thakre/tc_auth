@@ -141,7 +141,7 @@ Use this when the endpoint needs all authentication information.
 
 ``` python
 @app.get("/me")
-def fetch_me(user=Depends(auth.deps.get_current())):
+def fetch_me(user=Depends(auth.deps.get_current)):
     return user
 ```
 
@@ -160,7 +160,7 @@ continues.
 Returns only the authenticated account.
 
 ``` python
-auth.deps.get_current_account()
+auth.deps.get_current_account
 ```
 
 ## Returns
@@ -181,7 +181,7 @@ need the session or JWT payload.
 ``` python
 @app.get("/me/account")
 def fetch_account(
-    account=Depends(auth.deps.get_current_account())
+    account=Depends(auth.deps.get_current_account)
 ):
     return account
 ```
@@ -193,7 +193,7 @@ def fetch_account(
 Returns only the current authenticated session.
 
 ``` python
-auth.deps.get_current_session()
+auth.deps.get_current_session
 ```
 
 ## Returns
@@ -222,7 +222,7 @@ Use this when the endpoint needs information about the current session.
 ``` python
 @app.get("/me/session")
 def fetch_session(
-    session=Depends(auth.deps.get_current_session())
+    session=Depends(auth.deps.get_current_session)
 ):
     return session
 ```
@@ -234,7 +234,7 @@ def fetch_session(
 Returns only the verified JWT payload.
 
 ``` python
-auth.deps.get_current_payload()
+auth.deps.get_current_payload
 ```
 
 ## Returns
@@ -263,7 +263,7 @@ Use this when the endpoint only needs verified JWT claims.
 ``` python
 @app.get("/me/payload")
 def fetch_payload(
-    payload=Depends(auth.deps.get_current_payload())
+    payload=Depends(auth.deps.get_current_payload)
 ):
     return payload
 ```
@@ -275,18 +275,18 @@ def fetch_payload(
   -------------------------------------------------------------------------
   Dependency                Returns                 Use When
   ------------------------- ----------------------- -----------------------
-  `get_current()`           Account + session +     Complete authentication
+  `get_current`             Account + session +     Complete authentication
                             payload                 context is needed.
 
-  `get_current_account()`   Account                 Only account
+  `get_current_account`     Account                 Only account
                                                     information is
                                                     required.
 
-  `get_current_session()`   Session                 Only session
+  `get_current_session`     Session                 Only session
                                                     information is
                                                     required.
 
-  `get_current_payload()`   JWT payload             Only verified JWT
+  `get_current_payload`     JWT payload             Only verified JWT
                                                     claims are required.
   -------------------------------------------------------------------------
 
@@ -301,7 +301,7 @@ A protected endpoint can declare the required authentication dependency:
 ``` python
 @app.get("/me")
 def fetch_me(
-    user=Depends(auth.deps.get_current())
+    user=Depends(auth.deps.get_current)
 ):
     return user
 ```
@@ -317,13 +317,13 @@ avoids duplicating JWT and session verification across protected routes.
 
 ``` python
 from fastapi import Depends
-from usage import auth
+from connect import auth
 
 
 # Complete authentication context
 @app.get("/me")
 def fetch_me(
-    user=Depends(auth.deps.get_current())
+    user=Depends(auth.deps.get_current)
 ):
     return user
 
@@ -331,7 +331,7 @@ def fetch_me(
 # Current account only
 @app.get("/me/account")
 def fetch_account(
-    account=Depends(auth.deps.get_current_account())
+    account=Depends(auth.deps.get_current_account)
 ):
     return account
 
@@ -339,7 +339,7 @@ def fetch_account(
 # Current session only
 @app.get("/me/session")
 def fetch_session(
-    session=Depends(auth.deps.get_current_session())
+    session=Depends(auth.deps.get_current_session)
 ):
     return session
 
@@ -347,7 +347,7 @@ def fetch_session(
 # Current JWT payload only
 @app.get("/me/payload")
 def fetch_payload(
-    payload=Depends(auth.deps.get_current_payload())
+    payload=Depends(auth.deps.get_current_payload)
 ):
     return payload
 ```

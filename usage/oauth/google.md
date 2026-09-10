@@ -1,7 +1,7 @@
 # Google OAuth API
 
 ``` python
-from usage import auth
+from connect import auth
 ```
 
 The `GoogleOAuth` service provides a complete Google OAuth flow for
@@ -66,7 +66,7 @@ This should be called during application setup before using `login()` or
 `callback()`.
 
 ``` python
-auth.google_oauth.config(...)
+auth.google.config(...)
 ```
 
 ## Parameters
@@ -88,11 +88,20 @@ auth.google_oauth.config(...)
 ## Example
 
 ``` python
-auth.google_oauth.config(
+auth.google.config(
     client_id="YOUR_GOOGLE_CLIENT_ID",
     client_secret="YOUR_GOOGLE_CLIENT_SECRET",
-    redirect_uri="https://api.example.com/oauth/google/callback",
+    redirect_uri="https://api.example.com/tc-auth/google/callback",
 )
+```
+
+## Returns
+
+``` python
+{
+    "success": True,
+    "message": "Google OAuth configured successfully"
+}
 ```
 
 > The `redirect_uri` must exactly match the callback URL configured in
@@ -105,7 +114,7 @@ auth.google_oauth.config(
 Returns the currently configured Google OAuth settings.
 
 ``` python
-config = auth.google_oauth.load()
+config = auth.google.load()
 ```
 
 ## Returns
@@ -130,7 +139,7 @@ Starts the Google OAuth login flow.
 The user is redirected to Google's authorization page.
 
 ``` python
-await auth.google_oauth.login(...)
+await auth.google.login(...)
 ```
 
 ## Parameters
@@ -154,7 +163,7 @@ The `frontend_url` is temporarily stored in the session and used by
 ``` python
 @app.get("/oauth/google/login")
 async def google_login(request: Request):
-    return await auth.google_oauth.login(
+    return await auth.google.login(
         request=request,
         frontend_url="https://app.example.com",
     )
@@ -173,7 +182,7 @@ A redirect response to Google's OAuth authorization page.
 Handles the callback sent by Google after authentication.
 
 ``` python
-await auth.google_oauth.callback(...)
+await auth.google.callback(...)
 ```
 
 ## Parameters
@@ -205,7 +214,7 @@ The callback:
 ``` python
 @app.get("/oauth/google/callback")
 async def google_callback(request: Request):
-    return await auth.google_oauth.callback(
+    return await auth.google.callback(
         request=request,
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
@@ -262,23 +271,23 @@ continue the authenticated session.
 
 ``` python
 from fastapi import FastAPI, Request
-from usage import auth
+from connect import auth
 
 app = FastAPI()
 
 
 # Configure Google OAuth once during application setup.
-auth.google_oauth.config(
+auth.google.config(
     client_id="YOUR_GOOGLE_CLIENT_ID",
     client_secret="YOUR_GOOGLE_CLIENT_SECRET",
-    redirect_uri="https://api.example.com/oauth/google/callback",
+    redirect_uri="https://api.example.com/tc-auth/google/callback",
 )
 
 
 # Start Google OAuth
 @app.get("/oauth/google/login")
 async def google_login(request: Request):
-    return await auth.google_oauth.login(
+    return await auth.google.login(
         request=request,
         frontend_url="https://app.example.com",
     )
@@ -287,7 +296,7 @@ async def google_login(request: Request):
 # Handle Google OAuth callback
 @app.get("/oauth/google/callback")
 async def google_callback(request: Request):
-    return await auth.google_oauth.callback(
+    return await auth.google.callback(
         request=request,
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
@@ -305,10 +314,10 @@ For example:
 
 ``` text
 Google OAuth configuration:
-https://api.example.com/oauth/google/callback
+https://api.example.com/tc-auth/google/callback
 
 Application:
-redirect_uri="https://api.example.com/oauth/google/callback"
+redirect_uri="https://api.example.com/tc-auth/google/callback"
 ```
 
 A mismatch between these URLs causes the OAuth flow to fail.
@@ -332,7 +341,7 @@ A mismatch between these URLs causes the OAuth flow to fail.
 
   Method         Purpose                          Return
   -------------- -------------------------------- -------------------
-  `config()`     Configure Google OAuth           `None`
+  `config()`     Configure Google OAuth           `dict`
   `load()`       Get current configuration        `dict`
   `login()`      Start Google authentication      Redirect response
   `callback()`   Complete Google authentication   Redirect response
@@ -343,17 +352,17 @@ A mismatch between these URLs causes the OAuth flow to fail.
 
 ``` python
 # Configure
-auth.google_oauth.config(
+auth.google.config(
     client_id="YOUR_GOOGLE_CLIENT_ID",
     client_secret="YOUR_GOOGLE_CLIENT_SECRET",
-    redirect_uri="https://api.example.com/oauth/google/callback",
+    redirect_uri="https://api.example.com/tc-auth/google/callback",
 )
 
 
 # Start OAuth
 @app.get("/oauth/google/login")
 async def google_login(request: Request):
-    return await auth.google_oauth.login(
+    return await auth.google.login(
         request=request,
         frontend_url="https://app.example.com",
     )
@@ -362,7 +371,7 @@ async def google_login(request: Request):
 # Handle callback
 @app.get("/oauth/google/callback")
 async def google_callback(request: Request):
-    return await auth.google_oauth.callback(
+    return await auth.google.callback(
         request=request,
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),

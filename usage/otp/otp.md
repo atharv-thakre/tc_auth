@@ -94,7 +94,7 @@ All parameters are mandatory.
 ## Example
 
 ``` python
-auth.otp.verify(
+result = auth.otp.verify(
     identifier="testuser@example.com",
     purpose="login",
     otp="123456",
@@ -104,7 +104,10 @@ auth.otp.verify(
 ## Returns
 
 ``` python
-None
+{
+    "success": True,
+    "message": "OTP verified successfully"
+}
 ```
 
 ## Exceptions
@@ -139,7 +142,7 @@ If the OTP exists, it is deleted from the database.
 ## Example
 
 ``` python
-auth.otp.revoke(
+result = auth.otp.revoke(
     identifier="testuser@example.com",
     purpose="login",
 )
@@ -148,7 +151,11 @@ auth.otp.revoke(
 ## Returns
 
 ``` python
-None
+{
+    "success": True,
+    "message": "OTP revoked successfully",
+    "count": 1
+}
 ```
 
 ------------------------------------------------------------------------
@@ -166,13 +173,17 @@ This method takes no arguments.
 ## Example
 
 ``` python
-auth.otp.cleanup()
+result = auth.otp.cleanup()
 ```
 
 ## Returns
 
 ``` python
-None
+{
+    "success": True,
+    "message": "Expired OTPs cleaned successfully",
+    "count": 3
+}
 ```
 
 ------------------------------------------------------------------------
@@ -193,13 +204,17 @@ This method takes no arguments.
 ## Example
 
 ``` python
-auth.otp.clear_all()
+result = auth.otp.clear_all()
 ```
 
 ## Returns
 
 ``` python
-None
+{
+    "success": True,
+    "message": "All OTPs cleared successfully",
+    "count": 8
+}
 ```
 
 ------------------------------------------------------------------------
@@ -359,7 +374,7 @@ Each dictionary uses the same OTP object structure returned by
 # Quick Usage
 
 ``` python
-from usage import auth
+from connect import auth
 
 
 # Create OTP

@@ -186,13 +186,12 @@ auth.account.delete_user(
 
 ## Return Value
 
-This function does not return a value.
-
 ``` python
-None
+{
+    "success": True,
+    "message": "Account deleted successfully"
+}
 ```
-
-There is therefore no need to assign the result to a variable.
 
 ------------------------------------------------------------------------
 
@@ -256,7 +255,7 @@ be changed.
 ## Example
 
 ``` python
-auth.account.update_user(
+updated_user = auth.account.update_user(
     account_id=1,
     name="Updated User",
     email="updateduser@example.com",
@@ -268,11 +267,7 @@ auth.account.update_user(
 
 ## Return Value
 
-This function does not return a value.
-
-``` python
-None
-```
+Returns the updated account object as a `dict`.
 
 ------------------------------------------------------------------------
 
@@ -345,7 +340,7 @@ The SDK automatically hashes the password before storing it.
 ## Example
 
 ``` python
-auth.account.super_update(
+updated_user = auth.account.super_update(
     account_id=1,
     name="Updated User",
     email="updateduser@example.com",
@@ -360,11 +355,7 @@ auth.account.super_update(
 
 ## Return Value
 
-This function does not return a value.
-
-``` python
-None
-```
+Returns the updated account object as a `dict`.
 
 ------------------------------------------------------------------------
 
@@ -388,7 +379,7 @@ auth.account.update_password(...)
 The password is automatically hashed before being stored.
 
 ``` python
-auth.account.update_password(
+result = auth.account.update_password(
     account_id=1,
     password="updatedpassword",
 )
@@ -396,10 +387,11 @@ auth.account.update_password(
 
 ## Return Value
 
-This function does not return a value.
-
 ``` python
-None
+{
+    "success": True,
+    "message": "Password updated successfully"
+}
 ```
 
 ------------------------------------------------------------------------
@@ -425,7 +417,7 @@ this method requires an explicit status value.
 ## Example
 
 ``` python
-auth.account.update_status(
+updated_user = auth.account.update_status(
     account_id=1,
     status="active",
 )
@@ -433,11 +425,7 @@ auth.account.update_status(
 
 ## Return Value
 
-This function does not return a value.
-
-``` python
-None
-```
+Returns the updated account object as a `dict`.
 
 ------------------------------------------------------------------------
 
@@ -462,7 +450,7 @@ requires an explicit role.
 ## Example
 
 ``` python
-auth.account.update_role(
+updated_user = auth.account.update_role(
     account_id=1,
     role="admin",
 )
@@ -470,11 +458,7 @@ auth.account.update_role(
 
 ## Return Value
 
-This function does not return a value.
-
-``` python
-None
-```
+Returns the updated account object as a `dict`.
 
 ------------------------------------------------------------------------
 

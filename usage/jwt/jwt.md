@@ -80,7 +80,10 @@ auth.jwt.config(
 ## Returns
 
 ``` python
-None
+{
+    "success": True,
+    "message": "JWT configured successfully"
+}
 ```
 
 > Keep the secret key private and never commit it to source control.
@@ -255,7 +258,7 @@ Verified Payload
 # Complete Example
 
 ``` python
-from usage import auth
+from connect import auth
 
 
 # Configure JWT during application startup

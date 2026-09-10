@@ -8,7 +8,7 @@ The role dependency service provides FastAPI dependencies for
 restricting endpoints based on the authenticated user's role.
 
 Role checks run **after authentication**. They use
-`auth.deps.get_current()` internally, so JWT and session verification is
+`auth.deps.get_current` internally, so JWT and session verification is
 performed before the role is checked.
 
 ------------------------------------------------------------------------
@@ -32,7 +32,7 @@ Allows access only when the authenticated user's role exactly matches
 the specified role.
 
 ``` python
-auth.roles.require("admin")
+auth.role.require("admin")
 ```
 
 ## Parameters
@@ -46,7 +46,7 @@ auth.roles.require("admin")
 ``` python
 @app.get("/admin")
 def admin_route(
-    user=Depends(auth.roles.require("admin"))
+    user=Depends(auth.role.require("admin"))
 ):
     return user
 ```
@@ -75,7 +75,7 @@ Allows access when the authenticated user's role matches **any** of the
 specified roles.
 
 ``` python
-auth.roles.allow(...)
+auth.role.allow(...)
 ```
 
 ## Parameters
@@ -92,7 +92,7 @@ One or more roles that are allowed to access the endpoint.
 @app.get("/manage")
 def manage_route(
     user=Depends(
-        auth.roles.allow("admin", "moderator")
+        auth.role.allow("admin", "moderator")
     )
 ):
     return user
@@ -101,7 +101,7 @@ def manage_route(
 With:
 
 ``` python
-auth.roles.allow("admin", "moderator")
+auth.role.allow("admin", "moderator")
 ```
 
   User Role     Result
@@ -120,7 +120,7 @@ specified roles.
 All other roles are allowed.
 
 ``` python
-auth.roles.block(...)
+auth.role.block(...)
 ```
 
 ## Parameters
@@ -137,7 +137,7 @@ One or more roles that are blocked.
 @app.get("/user-area")
 def user_area(
     user=Depends(
-        auth.roles.block("admin")
+        auth.role.block("admin")
     )
 ):
     return user
@@ -146,7 +146,7 @@ def user_area(
 With:
 
 ``` python
-auth.roles.block("admin")
+auth.role.block("admin")
 ```
 
   User Role     Result
@@ -161,7 +161,7 @@ Multiple roles can also be blocked:
 @app.get("/restricted")
 def restricted_route(
     user=Depends(
-        auth.roles.block("admin", "superadmin")
+        auth.role.block("admin", "superadmin")
     )
 ):
     return user
@@ -180,7 +180,7 @@ Request
 JWT + Session Verification
    |
    v
-auth.deps.get_current()
+auth.deps.get_current
    |
    v
 Authenticated Account
@@ -209,7 +209,7 @@ For example:
 ``` python
 @app.get("/admin/profile")
 def admin_profile(
-    user=Depends(auth.roles.require("admin"))
+    user=Depends(auth.role.require("admin"))
 ):
     return {
         "id": user["id"],
@@ -229,7 +229,7 @@ The `user` variable contains the authenticated account.
 ``` python
 @app.get("/admin/dashboard")
 def admin_dashboard(
-    user=Depends(auth.roles.require("admin"))
+    user=Depends(auth.role.require("admin"))
 ):
     return user
 ```
@@ -244,7 +244,7 @@ Only users with the `admin` role can access the endpoint.
 @app.get("/moderation")
 def moderation(
     user=Depends(
-        auth.roles.allow("admin", "moderator")
+        auth.role.allow("admin", "moderator")
     )
 ):
     return user
@@ -260,7 +260,7 @@ Users with either `admin` or `moderator` roles are allowed.
 @app.get("/user-content")
 def user_content(
     user=Depends(
-        auth.roles.block("admin")
+        auth.role.block("admin")
     )
 ):
     return user
@@ -276,7 +276,7 @@ Administrators are denied while other roles are allowed.
 @app.get("/normal-users")
 def normal_users(
     user=Depends(
-        auth.roles.block("admin", "superadmin")
+        auth.role.block("admin", "superadmin")
     )
 ):
     return user

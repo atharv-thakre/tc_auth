@@ -54,7 +54,10 @@ auth.email.config(
 ## Returns
 
 ``` python
-None
+{
+    "success": True,
+    "message": "Email service configured successfully"
+}
 ```
 
 ------------------------------------------------------------------------
@@ -106,7 +109,7 @@ auth.email.send(...)
 ## Plain Text Example
 
 ``` python
-auth.email.send(
+result = auth.email.send(
     to="user@example.com",
     subject="Welcome",
     body="Welcome to our application!",
@@ -116,7 +119,7 @@ auth.email.send(
 ## HTML Example
 
 ``` python
-auth.email.send(
+result = auth.email.send(
     to="user@example.com",
     subject="Welcome",
     body="<h1>Welcome!</h1><p>Thanks for joining.</p>",
@@ -127,7 +130,10 @@ auth.email.send(
 ## Returns
 
 ``` python
-None
+{
+    "success": True,
+    "message": "Email sent successfully to user@example.com"
+}
 ```
 
 ------------------------------------------------------------------------
@@ -378,7 +384,7 @@ auth.email.config(
 # Complete Example
 
 ``` python
-from usage import auth
+from connect import auth
 
 
 # Configure SMTP

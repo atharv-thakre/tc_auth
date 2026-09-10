@@ -1,4 +1,4 @@
-from usage import auth
+from connect import auth
 
 
 # ==========================================================
@@ -231,7 +231,7 @@ config = auth.jwt.load()
 #     -> dict
 #
 # config()
-#     -> None
+#     -> dict
 #
 # create_access_token()
 #     -> str

@@ -241,7 +241,7 @@ All successful authentication flows below create a session record:
 # Quick Usage
 
 ``` python
-from usage import auth
+from connect import auth
 
 
 # Get account

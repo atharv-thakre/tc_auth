@@ -195,7 +195,7 @@ All parameters are mandatory.
 ## Example
 
 ``` python
-oauth_account = auth.oauth.unlink_account(
+response = auth.oauth.unlink_account(
     account_id=1,
     provider="github",
 )
@@ -203,8 +203,12 @@ oauth_account = auth.oauth.unlink_account(
 
 ## Returns
 
-Returns the OAuth account object using the same structure as
-`find_oauth()`.
+``` python
+{
+    "success": True,
+    "message": "OAuth link removed successfully"
+}
+```
 
 ------------------------------------------------------------------------
 
@@ -221,7 +225,7 @@ auth.oauth.get_all(...)
   Parameter     Type    Default   Description
   ------------- ------- --------- --------------------------------------
   `page`        `int`   `1`       Page number.
-  `page_size`   `int`   `10`      Number of records returned per page.
+  `limit`       `int`   `10`      Number of records returned per page.
 
 Both parameters are optional.
 
@@ -232,7 +236,7 @@ Results are returned from the latest OAuth account record.
 For example, with:
 
 ``` python
-page_size=10
+limit=10
 ```
 
 the results are divided as follows:
@@ -250,7 +254,7 @@ Increase the page number to retrieve the next set of records.
 ``` python
 oauth_accounts = auth.oauth.get_all(
     page=1,
-    page_size=10,
+    limit=10,
 )
 ```
 
@@ -347,7 +351,6 @@ The OAuth account object returned by:
 
 -   `find_oauth()`
 -   `link_account()`
--   `unlink_account()`
 -   `get_all()`
 -   `query()`
 
@@ -380,7 +383,7 @@ uses the following structure:
   `login()`            `dict` --- Login response
   `find_oauth()`       `dict` --- OAuth account
   `link_account()`     `dict` --- OAuth account
-  `unlink_account()`   `dict` --- OAuth account
+  `unlink_account()`   `dict` --- `{"success": True, "message": "..."}`
   `get_all()`          `list[dict]` --- OAuth accounts
   `query()`            `list[dict]` --- Matching OAuth accounts
 
@@ -389,7 +392,7 @@ uses the following structure:
 # Quick Usage
 
 ``` python
-from usage import auth
+from connect import auth
 
 
 # OAuth login
@@ -417,7 +420,7 @@ oauth_account = auth.oauth.link_account(
 
 
 # Unlink OAuth account
-oauth_account = auth.oauth.unlink_account(
+result = auth.oauth.unlink_account(
     account_id=1,
     provider="github",
 )
@@ -426,7 +429,7 @@ oauth_account = auth.oauth.unlink_account(
 # Get all OAuth accounts
 oauth_accounts = auth.oauth.get_all(
     page=1,
-    page_size=10,
+    limit=10,
 )
 
 
