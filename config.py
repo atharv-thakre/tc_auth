@@ -13,6 +13,13 @@ class Config:
     JWT_SESSION_DURATION_DAYS = int(
         os.getenv("JWT_SESSION_DURATION_DAYS", "7")
     )
+    JWT_DUAL_TOKEN_MODE = os.getenv("JWT_DUAL_TOKEN_MODE", "false").lower() == "true"
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES = int(
+        os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "15")
+    )
+    JWT_REFRESH_TOKEN_EXPIRE_DAYS = int(
+        os.getenv("JWT_REFRESH_TOKEN_EXPIRE_DAYS", str(JWT_SESSION_DURATION_DAYS))
+    )
 
     # ======================================================
     # EMAIL
@@ -42,6 +49,14 @@ class Config:
     GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID")
     GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET")
     GITHUB_REDIRECT_URI = os.getenv("GITHUB_REDIRECT_URI")
+
+    # ======================================================
+    # DISCORD
+    # ======================================================
+
+    DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID")
+    DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
+    DISCORD_REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI")
 
 
 config = Config()

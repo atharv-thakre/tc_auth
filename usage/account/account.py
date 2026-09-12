@@ -7,7 +7,7 @@ from connect import auth
 # 1. Create a new user account
 new_user = auth.account.create_user(
     name="Test User",
-    password="password123",
+    password="Password123",
     email="testuser@example.com",
     handle="testuser",
     avatar_url="https://example.com/avatar.jpg",
@@ -33,7 +33,7 @@ super_updated_user = auth.account.super_update(
 # 4. Update account password
 pwd_res = auth.account.update_password(
     account_id=new_user["id"],
-    password="new_password123",
+    password="NewPassword123",
 )
 
 # 5. Update account status

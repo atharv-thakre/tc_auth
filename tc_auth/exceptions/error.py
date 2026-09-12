@@ -207,3 +207,22 @@ class InvalidEmailPurposeError(EmailError):
     def __init__(self, purpose: str):
         self.purpose = purpose
         super().__init__(f"Invalid email OTP purpose: '{purpose}'")
+
+
+class InvalidConfigError(AuthError):
+    status_code = 400
+
+    def __init__(self, service: str, message: str | None = None):
+        self.service = service
+        msg = message or f"Invalid configuration for {service}"
+        super().__init__(msg)
+
+
+class WeakPasswordError(AuthError):
+    status_code = 400
+
+    def __init__(
+        self,
+        message: str = "Password must be at least 6 characters long and contain at least one uppercase letter, one lowercase letter, and one number",
+    ):
+        super().__init__(message)

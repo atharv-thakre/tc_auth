@@ -20,7 +20,7 @@ app = FastAPI()
 #
 
 # ==========================================================
-# 1. COMPLETE CONTEXT (auth.deps.get_current)
+# 1. COMPLETE CONTEXT (auth.deps.get_current_user)
 # ==========================================================
 #
 # Returns:
@@ -31,8 +31,9 @@ app = FastAPI()
 #     }
 #
 @app.get("/me")
-def fetch_me(user=Depends(auth.deps.get_current)):
+def fetch_me(user=Depends(auth.deps.get_current_user)):
     return user
+
 
 
 # ==========================================================

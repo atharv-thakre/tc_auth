@@ -106,7 +106,9 @@ auth.service.create_login_response(
 #     status -> None
 #
 # Password:
-#     Pass the password as plain text.
+#     Pass the password as plain text. Must satisfy password policy:
+#     minimum 6 characters, at least 1 uppercase letter, 1 lowercase letter,
+#     and 1 digit (e.g. "Password123").
 #     The authentication system handles password hashing.
 #
 # Session:
@@ -118,9 +120,17 @@ auth.service.create_login_response(
 #
 # Returns:
 #
-#     dict:
+#     dict (Single-token mode):
 #     {
 #         "access_token": access_token,
+#         "token_type": "Bearer",
+#         "account": account
+#     }
+#
+#     dict (Dual-token mode):
+#     {
+#         "access_token": access_token,
+#         "refresh_token": refresh_token,
 #         "token_type": "Bearer",
 #         "account": account
 #     }
@@ -128,7 +138,7 @@ auth.service.create_login_response(
 auth.service.signup(
     name="Test User",
     email="testuser@example.com",
-    password="123456",
+    password="Password123",
     handle="testuser",
     phone="1234567890",
     role="user",
@@ -151,7 +161,7 @@ auth.service.signup(
 # Required:
 #
 #     identifier
-#     password
+#     password (e.g. "Password123")
 #
 # Optional:
 #
@@ -176,7 +186,7 @@ auth.service.signup(
 #
 auth.service.login(
     identifier="testuser@example.com",
-    password="123456",
+    password="Password123",
     ip_address="127.0.0.1",
     user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
 )

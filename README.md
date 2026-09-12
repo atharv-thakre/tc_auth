@@ -2,7 +2,7 @@
 
 `tc_auth` is a production-ready, modular authentication and authorization library designed specifically for **FastAPI** applications with **SQLAlchemy**.
 
-It provides complete services for account management, password and OTP-based signup/login, session lifecycle management, email delivery, OpenID Connect / OAuth integrations (Google & GitHub), JWT token handling, and role/status-based access control dependencies.
+It provides complete services for account management, password and OTP-based signup/login, session lifecycle management, email delivery, OpenID Connect / OAuth integrations (Google, GitHub & Discord), dual-token JWT architecture (access + refresh tokens), password policy enforcement, multi-provider account linking, and role/status-based access control dependencies.
 
 ---
 
@@ -11,9 +11,10 @@ It provides complete services for account management, password and OTP-based sig
 - **Decoupled Architecture**: Designed to separate database/auth instantiation (`connect.py`) from FastAPI application lifecycle (`run.py`), eliminating circular dependencies across modular applications.
 - **Zero Null Responses**: Every API route and service action returns structured, standardized JSON payloads.
 - **Hierarchical Error Handling**: All exceptions inherit from `AuthError` with automatic HTTP status code mapping and standardized error formatting.
-- **Built-in Session & Token Management**: Dual-layer verification combining cryptographically hashed server-side sessions with signed JWT tokens.
+- **Dual-Token & Session Management**: Dual-layer verification combining cryptographically hashed server-side sessions with signed JWT access tokens and optional long-lived rotating refresh tokens.
+- **Password Policy Enforcement**: Automatic password strength validation (minimum 6 characters, at least one uppercase letter, one lowercase letter, and one number).
 - **FastAPI Dependencies**: Simple dependency injection for current account, session, JWT claims, role authorization, and account status guards.
-- **OAuth Providers**: Seamless Google and GitHub OAuth 2.0 / OpenID Connect authorization flows.
+- **OAuth Providers & Linking**: Seamless Google, GitHub, and Discord OAuth 2.0 / OpenID Connect flows with verified email auto-linking, secondary provider linking, and safe unlinking with lockout prevention.
 - **Email & OTP Service**: SMTP client with built-in HTML templating for signup, login, password reset, and email verification OTPs.
 - **Admin & Dashboard APIs**: Pre-configured routes for administrative inspection of accounts, sessions, OTPs, and OAuth links.
 
@@ -54,6 +55,9 @@ auth.jwt.config(
     secret_key="your-super-secret-key",
     algorithm="HS256",
     session_duration_days=7,
+    # dual_token_mode=True,            # Optional: Enable short-lived access + rotating refresh tokens
+    # access_token_expire_minutes=15,  # Optional: Access token lifespan in minutes
+    # refresh_token_expire_days=7,     # Optional: Refresh token lifespan in days
 )
 
 # Optional: Configure Email SMTP
@@ -67,7 +71,7 @@ auth.email.config(
     use_tls=True,
 )
 
-# Optional: Configure Google & GitHub OAuth
+# Optional: Configure Google, GitHub & Discord OAuth
 auth.google.config(
     client_id="YOUR_GOOGLE_CLIENT_ID",
     client_secret="YOUR_GOOGLE_CLIENT_SECRET",
@@ -78,6 +82,12 @@ auth.github.config(
     client_id="YOUR_GITHUB_CLIENT_ID",
     client_secret="YOUR_GITHUB_CLIENT_SECRET",
     redirect_uri="https://api.example.com/tc-auth/github/callback",
+)
+
+auth.discord.config(
+    client_id="YOUR_DISCORD_CLIENT_ID",
+    client_secret="YOUR_DISCORD_CLIENT_SECRET",
+    redirect_uri="https://api.example.com/tc-auth/discord/callback",
 )
 ```
 
@@ -172,6 +182,8 @@ auth = Auth(engine=engine, app=app)
 | `auth.jwt` | `jwt_handler` | JWT access token encoding, decoding, and verification |
 | `auth.google` | `GoogleOAuth` | Google OpenID Connect OAuth authorization and callback |
 | `auth.github` | `GitHubOAuth` | GitHub OAuth authorization and callback |
+| `auth.discord` | `DiscordOAuth` | Discord OAuth authorization and callback |
+| `auth.oauth` | `OAuthService` | Provider login, multi-provider account linking, and safe unlinking |
 | `auth.dashboard` | `DashboardService` | System counts and administrative statistics |
 
 ---
@@ -191,6 +203,7 @@ auth.destroy()
 ## Documentation
 
 - **[API HTTP Route Reference](api_docs/ROUTES_INDEX.md)**: Comprehensive HTTP route endpoint specifications, parameters, and payloads.
-- **[Standardized API Responses](tc_auth/API_RESPONSES.md)**: Exact response schemas and route change matrix.
+- **[Frontend Token Usage Guide](token_usage_guide.md)**: Universal guide for handling Single-Token and Dual-Token modes (Access + Refresh tokens).
+- **[OAuth Frontend Integration Guide](api_docs/oauth_integration.md)**: Frontend callback routers, token handling, and multi-provider linking.
 - **[Library SDK Reference (`usage/`)](usage/connect/connect.md)**: In-depth usage guides for each service module, dependency, and OAuth adapter.
 - **[Changelog (`changes.md`)](changes.md)**: Full record of recent architecture, error handling, and response standardizations.

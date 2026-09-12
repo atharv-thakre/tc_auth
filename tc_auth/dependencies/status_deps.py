@@ -12,7 +12,7 @@ class StatusDeps:
     ):
         def dependency(
             current: dict = Depends(
-                self.auth_deps.get_current
+                self.auth_deps.get_current_user
             ),
         ):
             account = current.get("account") if isinstance(current, dict) else None
@@ -36,7 +36,7 @@ class StatusDeps:
     ):
         def dependency(
             current: dict = Depends(
-                self.auth_deps.get_current
+                self.auth_deps.get_current_user
             ),
         ):
             account = current.get("account") if isinstance(current, dict) else None
@@ -60,7 +60,7 @@ class StatusDeps:
     ):
         def dependency(
             current: dict = Depends(
-                self.auth_deps.get_current
+                self.auth_deps.get_current_user
             ),
         ):
             account = current.get("account") if isinstance(current, dict) else None

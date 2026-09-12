@@ -3,7 +3,7 @@ SAMPLE_MODULE/
 /connect.py
 /run.py
 /test.py
-/changes.md
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

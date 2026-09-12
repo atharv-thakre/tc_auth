@@ -36,7 +36,7 @@ from connect import auth  # Safe import — no FastAPI app initialized here!
 │ 1. connect.py (Database & Auth Definition)                  │
 │    - Creates SQLAlchemy database engine                     │
 │    - Initializes `auth = Auth(engine=engine)`               │
-│    - Configures JWT, Email, Google OAuth, GitHub OAuth      │
+│    - Configures JWT, Email, Google, GitHub, Discord OAuth   │
 └──────────────┬───────────────────────────────┬──────────────┘
                │                               │
                ▼                               ▼
@@ -102,7 +102,7 @@ auth.include_routes(app)
 items_router = APIRouter(prefix="/items", tags=["Items"])
 
 @items_router.get("/")
-def list_items(current_user: dict = Depends(auth.deps.get_current)):
+def list_items(current_user: dict = Depends(auth.deps.get_current_user)):
     """Protected endpoint requiring a valid authenticated session."""
     return {
         "message": "Authenticated items access",

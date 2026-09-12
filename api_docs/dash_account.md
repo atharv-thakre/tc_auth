@@ -68,7 +68,7 @@ Body:
   "phone": "+15555550100",
   "role": "user",
   "status": "active",
-  "password": "password123"
+  "password": "Password123"
 }
 ```
 
@@ -92,7 +92,7 @@ Body:
   "phone": "+15555550100",
   "role": "admin",
   "status": "active",
-  "password": "new-password123"
+  "password": "NewPassword123"
 }
 ```
 

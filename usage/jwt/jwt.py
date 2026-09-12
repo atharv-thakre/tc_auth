@@ -35,7 +35,7 @@ from connect import auth
 #     {
 #         "secret_key": "...",
 #         "algorithm": "HS256",
-#         "session_duration_days": 1
+#         "session_duration_days": 7
 #     }
 #
 # Example:
@@ -55,19 +55,42 @@ config = auth.jwt.load()
 #         Secret key used to sign and verify JWT tokens.
 #
 #     algorithm (str):
-#         JWT signing algorithm.
+#         JWT signing algorithm (HS256, HS384, HS512).
 #
 #     session_duration_days (int):
 #         Number of days for which newly created access tokens
-#         remain valid.
+#         remain valid (in single-token mode).
 #
-# Example:
+# Optional parameters (Dual-Token Mode):
+#
+#     dual_token_mode (bool, default False):
+#         When enabled, logins and signups issue both short-lived
+#         access tokens and long-lived refresh tokens.
+#
+#     access_token_expire_minutes (int, default 15):
+#         Lifespan in minutes for access tokens in dual-token mode.
+#
+#     refresh_token_expire_days (int, defaults to session_duration_days):
+#         Lifespan in days for refresh tokens in dual-token mode.
+#
+# Example (Single-Token Mode - Default):
 #
 auth.jwt.config(
     secret_key="your-super-secret-key",
     algorithm="HS256",
-    session_duration_days=1,
+    session_duration_days=7,
 )
+#
+# Example (Dual-Token Mode):
+#
+# auth.jwt.config(
+#     secret_key="your-super-secret-key",
+#     algorithm="HS256",
+#     session_duration_days=7,
+#     dual_token_mode=True,
+#     access_token_expire_minutes=15,
+#     refresh_token_expire_days=7,
+# )
 #
 # WARNING:
 #     Keep the secret key private.
@@ -197,7 +220,7 @@ payload = auth.jwt.verify_token(
 auth.jwt.config(
     secret_key="your-super-secret-key",
     algorithm="HS256",
-    session_duration_days=1,
+    session_duration_days=7,
 )
 #
 #

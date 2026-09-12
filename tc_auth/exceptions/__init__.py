@@ -23,6 +23,8 @@ from .error import (
     EmailNotConfiguredError,
     EmailSendError,
     InvalidEmailPurposeError,
+    InvalidConfigError,
+    WeakPasswordError,
 )
 from .handler import auth_exception_handler
 
@@ -51,5 +53,7 @@ __all__ = [
     "EmailNotConfiguredError",
     "EmailSendError",
     "InvalidEmailPurposeError",
+    "InvalidConfigError",
+    "WeakPasswordError",
     "auth_exception_handler",
 ]

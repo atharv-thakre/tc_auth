@@ -51,6 +51,7 @@ engine = create_engine(
 #     auth.jwt         -> jwt_handler
 #     auth.google      -> GoogleOAuth
 #     auth.github      -> GitHubOAuth
+#     auth.discord     -> DiscordOAuth
 #     auth.dashboard   -> DashboardService
 #
 auth = Auth(engine=engine)
@@ -60,7 +61,7 @@ auth = Auth(engine=engine)
 # 3. JWT CONFIGURATION (OPTIONAL)
 # ==========================================================
 #
-# tc-auth provides default JWT settings (HS256, 1 day validity).
+# tc-auth provides default JWT settings (HS256, 7 days validity).
 # Call auth.jwt.config() only if custom parameters are required.
 #
 auth.jwt.config(
@@ -110,7 +111,18 @@ auth.github.config(
 
 
 # ==========================================================
-# 7. TABLE CREATION / TEARDOWN HELPERS
+# 7. DISCORD OAUTH CONFIGURATION (OPTIONAL)
+# ==========================================================
+#
+auth.discord.config(
+    client_id="your-discord-client-id",
+    client_secret="your-discord-client-secret",
+    redirect_uri="https://app.totalchaos.online/tc-auth/discord/callback",
+)
+
+
+# ==========================================================
+# 8. TABLE CREATION / TEARDOWN HELPERS
 # ==========================================================
 #
 # auth.init()     # Creates all database tables

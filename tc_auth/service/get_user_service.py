@@ -1,4 +1,5 @@
 from uuid import UUID
+from sqlalchemy import func
 from ..db.models import Account
 from ..utils.get_helper import to_dict
 from ..exceptions.error import UserNotFoundError
@@ -86,9 +87,11 @@ class GetUserService:
         if not email or not isinstance(email, str) or not email.strip():
             raise UserNotFoundError("email", email)
 
+        clean_email = email.strip().lower()
+
         return self._get_by(
-            Account.email,
-            email.strip(),
+            func.lower(Account.email),
+            clean_email,
             include_password,
         )
 
@@ -128,10 +131,12 @@ class GetUserService:
         if not email or not isinstance(email, str) or not email.strip():
             return None
 
+        clean_email = email.strip().lower()
+
         with self.session_factory() as db:
             account = (
                 db.query(Account)
-                .filter(Account.email == email.strip())
+                .filter(func.lower(Account.email) == clean_email)
                 .first()
             )
 

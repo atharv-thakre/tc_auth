@@ -56,11 +56,12 @@ Creates a new authentication session.
 
 ## Parameters
 
-  Parameter      Type    Required
-  -------------- ------- ----------
-  `account_id`   `int`   Yes
-  `ip_address`   `str`   Yes
-  `user_agent`   `str`   Yes
+  Parameter      Type    Required   Default   Description
+  -------------- ------- ---------- --------- ----------------------------------------
+  `account_id`   `int`   Yes        ---       Account associated with the session.
+  `ip_address`   `str`   Yes        ---       Client IP address.
+  `user_agent`   `str`   Yes        ---       Client User-Agent header.
+  `days`         `int`   No         `7`       Validity period of the session in days.
 
 ## Example
 
@@ -69,6 +70,7 @@ result = auth.session.create_session(
     account_id=1,
     ip_address="127.0.0.1",
     user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+    days=7,
 )
 ```
 

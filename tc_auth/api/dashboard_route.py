@@ -17,10 +17,12 @@ class DashboardRoute:
         jwt_service,
         role_deps,
         dashboard_service,
+        discord_service=None,
     ):
         self.email_service = email_service
         self.github_service = github_service
         self.google_service = google_service
+        self.discord_service = discord_service
         self.jwt_service = jwt_service
         self.role_deps = role_deps
         self.dashboard_service = dashboard_service
@@ -46,6 +48,7 @@ class DashboardRoute:
                 "email": self.email_service.load(),
                 "github": self.github_service.load(),
                 "google": self.google_service.load(),
+                "discord": self.discord_service.load() if self.discord_service else None,
                 "jwt": self.jwt_service.load(),
             }
 
@@ -64,6 +67,12 @@ class DashboardRoute:
         @self.router.post("/google")
         def configure_google(config: OAuthConfig, user=current):
             return self.google_service.config(**config.model_dump())
+
+        @self.router.post("/discord")
+        def configure_discord(config: OAuthConfig, user=current):
+            if not self.discord_service:
+                return {"success": False, "message": "Discord service is not available"}
+            return self.discord_service.config(**config.model_dump())
 
         @self.router.post("/jwt")
         def configure_jwt(config: JWTConfig, user=current):    

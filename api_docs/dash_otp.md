@@ -54,7 +54,7 @@ Response:
 
 ## POST `/`
 
-Creates an OTP for an identifier and purpose.
+Creates an OTP for an identifier and purpose (`signup`, `login`, `reset`, or `verify`).
 
 Body:
 

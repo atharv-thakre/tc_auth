@@ -17,7 +17,7 @@ If `app = FastAPI()` and `auth = Auth(engine, app)` are initialized in the same 
 │ 1. connect.py                                               │
 │    - Creates DB engine & session factory                    │
 │    - Initializes `auth = Auth(engine=engine)`               │
-│    - Configures JWT, Email, Google OAuth, GitHub OAuth      │
+│    - Configures JWT, Email, Google, GitHub, Discord OAuth   │
 └──────────────┬───────────────────────────────┬──────────────┘
                │                               │
                ▼                               ▼
@@ -81,6 +81,13 @@ auth.github.config(
     client_secret="your-github-client-secret",
     redirect_uri="https://app.example.com/tc-auth/github/callback",
 )
+
+# 7. Configure Discord OAuth (Optional)
+auth.discord.config(
+    client_id="your-discord-client-id",
+    client_secret="your-discord-client-secret",
+    redirect_uri="https://app.example.com/tc-auth/discord/callback",
+)
 ```
 
 ---
@@ -96,7 +103,7 @@ from connect import auth
 router = APIRouter(prefix="/user", tags=["User Profile"])
 
 @router.get("/profile")
-def get_profile(user=Depends(auth.deps.get_current)):
+def get_profile(user=Depends(auth.deps.get_current_user)):
     return {
         "account": user["account"],
         "session": user["session"],
@@ -193,6 +200,7 @@ The `auth` object provides direct access to all components:
 | `auth.jwt` | `jwt_handler` | JWT configuration, token encoding and decoding |
 | `auth.google` | `GoogleOAuth` | Google OAuth configuration, login, and callback |
 | `auth.github` | `GitHubOAuth` | GitHub OAuth configuration, login, and callback |
+| `auth.discord` | `DiscordOAuth` | Discord OAuth configuration, login, and callback |
 | `auth.dashboard` | `DashboardService` | Resource counts and system statistics |
 
 ---

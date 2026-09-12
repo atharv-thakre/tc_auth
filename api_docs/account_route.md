@@ -209,7 +209,102 @@ const res = await fetch(`${baseUrl}/tc-auth/update/password`, {
     Authorization: `Bearer ${accessToken}`,
     "Content-Type": "application/json",
   },
-  body: JSON.stringify({ password: "new-password123" }),
+  body: JSON.stringify({ password: "NewPassword123" }),
 });
 const data = await res.json();
 ```
+
+## POST `/account/oauth/link/{provider}`
+
+Links a secondary OAuth provider (`google`, `github`, or `discord`) to the authenticated user account. Specific route aliases exist:
+- `POST /account/oauth/link/google`
+- `POST /account/oauth/link/github`
+- `POST /account/oauth/link/discord`
+
+Headers:
+- `Authorization: Bearer <access_token>`
+
+Request Options:
+1. **Redirect Flow**: Pass `?frontend_url=https://app.com` query parameter or `{ "frontend_url": "https://app.com" }` body. Returns a redirect to the provider's authorization page. Upon callback, the provider is linked to this account.
+2. **Direct Payload Flow**: Pass `{ "provider_user_id": "provider-id-123" }` in JSON body. Directly links the provider and returns the link object.
+
+Response (Direct Flow):
+```json
+{
+  "id": 2,
+  "account_id": 1,
+  "provider": "google",
+  "provider_user_id": "google-user-123",
+  "created_at": "2026-09-12T12:00:00"
+}
+```
+
+Example (Browser Redirect):
+```js
+const res = await fetch(`${baseUrl}/tc-auth/account/oauth/link/google?frontend_url=${encodeURIComponent(frontendUrl)}`, {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${accessToken}`,
+  },
+});
+```
+
+## DELETE `/account/oauth/{provider}`
+
+Safely unlinks a connected OAuth provider from the authenticated user account.
+
+Headers:
+- `Authorization: Bearer <access_token>`
+
+Path parameter:
+- `provider`: `google`, `github`, or `discord`
+
+Lockout Prevention:
+The unlinking request will fail with **HTTP 400 Bad Request** if unlinking would leave the account without any authentication method (i.e. if the user has no password and no other connected OAuth providers).
+
+Response:
+```json
+{
+  "success": true,
+  "message": "OAuth link for 'google' removed successfully"
+}
+```
+
+Example:
+```js
+const res = await fetch(`${baseUrl}/tc-auth/account/oauth/google`, {
+  method: "DELETE",
+  headers: {
+    Authorization: `Bearer ${accessToken}`,
+  },
+});
+const data = await res.json();
+```
+
+## GET `/account/oauth/links`
+
+Retrieves all connected OAuth providers for the authenticated user account.
+
+Headers:
+- `Authorization: Bearer <access_token>`
+
+Response:
+```json
+[
+  {
+    "id": 1,
+    "account_id": 1,
+    "provider": "google",
+    "provider_user_id": "1049281048",
+    "created_at": "2026-09-12T12:00:00"
+  },
+  {
+    "id": 2,
+    "account_id": 1,
+    "provider": "github",
+    "provider_user_id": "948271",
+    "created_at": "2026-09-12T12:05:00"
+  }
+]
+```
+

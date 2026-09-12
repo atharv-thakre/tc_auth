@@ -45,10 +45,9 @@ app.add_middleware(
 # 3. MOUNT TC-AUTH LIBRARY ROUTES
 # ==========================================================
 #
-# auth.include_routes(app, prefix="/tc-auth") mounts:
-#   - Auth routes: /tc-auth/send/email/otp, /tc-auth/signup/*, /tc-auth/login/*, /tc-auth/forgot/password
-#   - OAuth routes: /tc-auth/google/*, /tc-auth/github/*
-#   - Account routes: /tc-auth/me, /tc-auth/logout, /tc-auth/logout-all, /tc-auth/update/password
+#   - Auth routes: /tc-auth/send/email/otp, /tc-auth/signup/*, /tc-auth/login/*, /tc-auth/forgot/password, /tc-auth/token/refresh
+#   - OAuth routes: /tc-auth/google/*, /tc-auth/github/*, /tc-auth/discord/*
+#   - Account routes: /tc-auth/me, /tc-auth/logout, /tc-auth/logout-all, /tc-auth/update/password, /tc-auth/account/oauth/*
 #   - Admin Dashboard routes: /tc-auth/account/*, /tc-auth/session/*, /tc-auth/oauth/*, /tc-auth/otp/*, /tc-auth/config/*
 #   - Global AuthError exception handlers and SessionMiddleware
 #
@@ -64,7 +63,7 @@ auth.include_routes(app, prefix="/tc-auth")
 items_router = APIRouter(prefix="/items", tags=["Items"])
 
 @items_router.get("/")
-def list_items(current_user: dict = Depends(auth.deps.get_current)):
+def list_items(current_user: dict = Depends(auth.deps.get_current_user)):
     """Protected endpoint requiring a valid authenticated session."""
     return {
         "message": "Authenticated items access",

@@ -23,6 +23,9 @@ auth.jwt.config(
     secret_key=config.JWT_SECRET_KEY,
     algorithm=config.JWT_ALGORITHM,
     session_duration_days=config.JWT_SESSION_DURATION_DAYS,
+    dual_token_mode=config.JWT_DUAL_TOKEN_MODE,
+    access_token_expire_minutes=config.JWT_ACCESS_TOKEN_EXPIRE_MINUTES,
+    refresh_token_expire_days=config.JWT_REFRESH_TOKEN_EXPIRE_DAYS,
 )
 
 
@@ -36,18 +39,28 @@ auth.email.config(
 )
 
 
-auth.google.config(
-    client_id=config.GOOGLE_CLIENT_ID,
-    client_secret=config.GOOGLE_CLIENT_SECRET,
-    redirect_uri=config.GOOGLE_REDIRECT_URI,
-)
+if config.GOOGLE_CLIENT_ID and config.GOOGLE_CLIENT_SECRET:
+    auth.google.config(
+        client_id=config.GOOGLE_CLIENT_ID,
+        client_secret=config.GOOGLE_CLIENT_SECRET,
+        redirect_uri=config.GOOGLE_REDIRECT_URI,
+    )
 
 
-auth.github.config(
-    client_id=config.GITHUB_CLIENT_ID,
-    client_secret=config.GITHUB_CLIENT_SECRET,
-    redirect_uri=config.GITHUB_REDIRECT_URI,
-)
+if config.GITHUB_CLIENT_ID and config.GITHUB_CLIENT_SECRET:
+    auth.github.config(
+        client_id=config.GITHUB_CLIENT_ID,
+        client_secret=config.GITHUB_CLIENT_SECRET,
+        redirect_uri=config.GITHUB_REDIRECT_URI,
+    )
+
+
+if config.DISCORD_CLIENT_ID and config.DISCORD_CLIENT_SECRET:
+    auth.discord.config(
+        client_id=config.DISCORD_CLIENT_ID,
+        client_secret=config.DISCORD_CLIENT_SECRET,
+        redirect_uri=config.DISCORD_REDIRECT_URI,
+    )
 
 
 def run():

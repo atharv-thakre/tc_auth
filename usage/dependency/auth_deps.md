@@ -35,7 +35,7 @@ This makes it especially useful for protected FastAPI endpoints.
 
 # Authentication Context
 
-`auth.deps.get_current()` returns the complete authentication context:
+`auth.deps.get_current_user` (or `auth.deps.get_current(credentials)`) returns the complete authentication context:
 
 ``` python
 {
@@ -117,12 +117,12 @@ associated account, session, and payload.
 
 ------------------------------------------------------------------------
 
-# `get_current()`
+# `get_current_user`
 
-Returns the complete authentication context.
+FastAPI dependency that returns the complete authentication context.
 
 ``` python
-auth.deps.get_current()
+auth.deps.get_current_user
 ```
 
 ## Returns
@@ -141,7 +141,7 @@ Use this when the endpoint needs all authentication information.
 
 ``` python
 @app.get("/me")
-def fetch_me(user=Depends(auth.deps.get_current)):
+def fetch_me(user=Depends(auth.deps.get_current_user)):
     return user
 ```
 
@@ -152,6 +152,16 @@ authentication context.
 
 If authentication fails, the request is stopped before the route logic
 continues.
+
+------------------------------------------------------------------------
+
+# `get_current(credentials)`
+
+Direct method to verify authorization credentials string and return the complete authentication context without FastAPI `Depends`.
+
+``` python
+user = auth.deps.get_current(credentials="eyJhbGciOiJIUzI1Ni...")
+```
 
 ------------------------------------------------------------------------
 
@@ -275,7 +285,7 @@ def fetch_payload(
   -------------------------------------------------------------------------
   Dependency                Returns                 Use When
   ------------------------- ----------------------- -----------------------
-  `get_current`             Account + session +     Complete authentication
+  `get_current_user`        Account + session +     Complete authentication
                             payload                 context is needed.
 
   `get_current_account`     Account                 Only account
@@ -301,7 +311,7 @@ A protected endpoint can declare the required authentication dependency:
 ``` python
 @app.get("/me")
 def fetch_me(
-    user=Depends(auth.deps.get_current)
+    user=Depends(auth.deps.get_current_user)
 ):
     return user
 ```
@@ -323,7 +333,7 @@ from connect import auth
 # Complete authentication context
 @app.get("/me")
 def fetch_me(
-    user=Depends(auth.deps.get_current)
+    user=Depends(auth.deps.get_current_user)
 ):
     return user
 

@@ -12,7 +12,7 @@ class RoleDeps:
         role: str,
     ):
         def dependency(
-            current=Depends(self.auth_deps.get_current),
+            current=Depends(self.auth_deps.get_current_user),
         ):
             user = current.get("account") if isinstance(current, dict) else None
             if not user or not isinstance(user, dict):
@@ -36,7 +36,7 @@ class RoleDeps:
         *roles: str,
     ):
         def dependency(
-            current=Depends(self.auth_deps.get_current),
+            current=Depends(self.auth_deps.get_current_user),
         ):
             user = current.get("account") if isinstance(current, dict) else None
             if not user or not isinstance(user, dict):
@@ -60,7 +60,7 @@ class RoleDeps:
         *roles: str,
     ):
         def dependency(
-            current=Depends(self.auth_deps.get_current),
+            current=Depends(self.auth_deps.get_current_user),
         ):
             user = current.get("account") if isinstance(current, dict) else None
             if not user or not isinstance(user, dict):

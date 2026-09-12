@@ -3,6 +3,7 @@ from uuid import UUID
 
 from ..utils.hasher import hash_password
 from ..utils.get_helper import to_list_dict
+from ..utils.password_policy import validate_password_strength
 from ..db.models import Account
 from ..exceptions.error import (
     EmailAlreadyExistsError,
@@ -115,6 +116,7 @@ class AccountService:
                 account.email = email
 
             if password is not None:
+                validate_password_strength(password)
                 account.password_hash = hash_password(password)
 
             if handle is not None:
@@ -211,6 +213,8 @@ class AccountService:
         if not password or not isinstance(password, str):
             raise InvalidFieldError("password", "Password cannot be empty")
 
+        validate_password_strength(password)
+
         with self.session_factory() as db:
             account = self._get_account(db, account_id)
             account.password_hash = hash_password(password)
@@ -298,6 +302,7 @@ class AccountService:
                 account.status = status
 
             if password is not None:
+                validate_password_strength(password)
                 account.password_hash = hash_password(password)
 
             try:

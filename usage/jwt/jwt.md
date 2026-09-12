@@ -35,7 +35,7 @@ The default configuration is equivalent to:
 ``` python
 SECRET_KEY = "this-is-my-super-secret-key-for-jwt-auth"
 ALGORITHM = "HS256"
-SESSION_DURATION_DAYS = 1
+SESSION_DURATION_DAYS = 7
 ```
 
 > **Security:** Replace the default secret key with a strong private key
@@ -65,15 +65,35 @@ auth.jwt.config(...)
 
   `session_duration_days`   `int`             Yes               Token validity
                                                                 period in days.
+
+  `dual_token_mode`         `bool`            No                Enable access + refresh
+                                                                tokens (default False).
+
+  `access_token_expire_minutes` `int`         No                Access token duration
+                                                                in minutes (default 15).
+
+  `refresh_token_expire_days` `int`           No                Refresh token duration
+                                                                in days (default 7).
   -------------------------------------------------------------------------------
 
 ## Example
 
 ``` python
+# Default (Single-token mode)
 auth.jwt.config(
     secret_key="your-super-secret-key",
     algorithm="HS256",
-    session_duration_days=1,
+    session_duration_days=7,
+)
+
+# Optional Dual-token mode
+auth.jwt.config(
+    secret_key="your-super-secret-key",
+    algorithm="HS256",
+    session_duration_days=7,
+    dual_token_mode=True,
+    access_token_expire_minutes=15,
+    refresh_token_expire_days=7,
 )
 ```
 
@@ -104,7 +124,7 @@ config = auth.jwt.load()
 {
     "secret_key": "...",
     "algorithm": "HS256",
-    "session_duration_days": 1
+    "session_duration_days": 7
 }
 ```
 
@@ -265,7 +285,7 @@ from connect import auth
 auth.jwt.config(
     secret_key="your-super-secret-key",
     algorithm="HS256",
-    session_duration_days=1,
+    session_duration_days=7,
 )
 
 

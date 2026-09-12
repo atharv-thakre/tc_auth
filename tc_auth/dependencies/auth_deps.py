@@ -28,6 +28,9 @@ class AuthDeps:
         if not isinstance(payload, dict):
             raise InvalidTokenError(field="payload")
 
+        if payload.get("type") == "refresh":
+            raise InvalidTokenError(field="token", message="Refresh token cannot be used as an access token")
+
         sid = payload.get("sid")
         aid = payload.get("aid")
         token_secret = payload.get("token")
@@ -76,13 +79,13 @@ class AuthDeps:
 
     def get_current(
         self,
-        credentials: HTTPAuthorizationCredentials = Depends(security_jwt),
+        credentials: str,
     ):
-        if not credentials or not credentials.credentials:
+        if not credentials or not isinstance(credentials, str) or not credentials.strip():
             raise InvalidTokenError(field="credentials", message="Missing authorization credentials")
 
         payload, session = self._authenticate(
-            credentials.credentials
+            credentials.strip()
         )
 
         try:
@@ -102,8 +105,17 @@ class AuthDeps:
         }
 
     # ==========================================================
-    # HELPERS
+    # FASTAPI DEPENDENCIES
     # ==========================================================
+
+    def get_current_user(
+        self,
+        credentials: HTTPAuthorizationCredentials = Depends(security_jwt),
+    ):
+        if not credentials or not credentials.credentials:
+            raise InvalidTokenError(field="credentials", message="Missing authorization credentials")
+
+        return self.get_current(credentials.credentials)
 
     def get_current_account(
         self,
@@ -112,21 +124,8 @@ class AuthDeps:
         if not credentials or not credentials.credentials:
             raise InvalidTokenError(field="credentials", message="Missing authorization credentials")
 
-        payload, _ = self._authenticate(
-            credentials.credentials
-        )
-
-        try:
-            account = self.get_user.by_id(
-                payload["aid"]
-            )
-        except Exception:
-            raise InvalidTokenError(field="user", message="User account not found")
-
-        if not account:
-            raise InvalidTokenError(field="user", message="User account not found")
-
-        return account
+        current = self.get_current(credentials.credentials)
+        return current["account"]
 
     def get_current_session(
         self,
@@ -135,10 +134,8 @@ class AuthDeps:
         if not credentials or not credentials.credentials:
             raise InvalidTokenError(field="credentials", message="Missing authorization credentials")
 
-        _, session = self._authenticate(
-            credentials.credentials
-        )
-        return session
+        current = self.get_current(credentials.credentials)
+        return current["session"]
 
     def get_current_payload(
         self,
@@ -147,7 +144,5 @@ class AuthDeps:
         if not credentials or not credentials.credentials:
             raise InvalidTokenError(field="credentials", message="Missing authorization credentials")
 
-        payload, _ = self._authenticate(
-            credentials.credentials
-        )
-        return payload
+        current = self.get_current(credentials.credentials)
+        return current["payload"]

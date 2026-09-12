@@ -3,7 +3,7 @@ import secrets
 from sqlalchemy.exc import IntegrityError
 
 from ..utils.get_helper import to_list_dict
-from ..jwt_handler import SESSION_DURATION_DAYS
+from .. import jwt_handler
 from ..db.models import Session
 from ..utils.get_helper import to_dict
 from ..utils.hasher import simple_hash
@@ -55,6 +55,11 @@ class SessionService:
     ):
         token = secrets.token_urlsafe(48)
 
+        if jwt_handler.is_dual_token_mode():
+            duration_days = jwt_handler.get_refresh_token_expire_days()
+        else:
+            duration_days = jwt_handler.get_session_duration_days()
+
         with self.session_factory() as db:
             session = Session(
                 account_id=account_id,
@@ -62,8 +67,9 @@ class SessionService:
                 ip_address=ip_address,
                 user_agent=user_agent,
                 expires_at=datetime.now(UTC)
-                + timedelta(days=SESSION_DURATION_DAYS),
+                + timedelta(days=duration_days),
             )
+
 
             try:
                 db.add(session)

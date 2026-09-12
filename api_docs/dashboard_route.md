@@ -36,7 +36,7 @@ const data = await res.json();
 
 ## GET `/load/`
 
-Loads the current email, GitHub, Google, and JWT configuration.
+Loads the current email, GitHub, Google, Discord, and JWT configuration.
 
 Response:
 
@@ -61,10 +61,15 @@ Response:
     "client_secret": "...",
     "redirect_uri": "https://app.example.com/tc-auth/google/callback"
   },
+  "discord": {
+    "client_id": "...",
+    "client_secret": "...",
+    "redirect_uri": "https://app.example.com/tc-auth/discord/callback"
+  },
   "jwt": {
     "secret_key": "...",
     "algorithm": "HS256",
-    "session_duration_days": 1
+    "session_duration_days": 7
   }
 }
 ```
@@ -181,9 +186,32 @@ Response:
 }
 ```
 
+## POST `/discord`
+
+Configures Discord OAuth.
+
+Body:
+
+```json
+{
+  "client_id": "...",
+  "client_secret": "...",
+  "redirect_uri": "https://app.example.com/tc-auth/discord/callback"
+}
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "message": "Discord OAuth configured successfully"
+}
+```
+
 ## POST `/jwt`
 
-Configures JWT signing and session lifetime.
+Configures JWT signing, session lifetime, and optional dual-token architecture.
 
 Body:
 
@@ -191,9 +219,17 @@ Body:
 {
   "secret_key": "super-secret",
   "algorithm": "HS256",
-  "session_duration_days": 1
+  "session_duration_days": 7,
+  "dual_token_mode": false,
+  "access_token_expire_minutes": 15,
+  "refresh_token_expire_days": 7
 }
 ```
+
+- `session_duration_days` (required): Integer $\ge 1$. Controls single-token access expiration and database session lifetime. Default is `7`.
+- `dual_token_mode` (optional): Boolean. When `true`, login and signup issue both a short-lived `access_token` and a long-lived `refresh_token`.
+- `access_token_expire_minutes` (optional): Integer $\ge 1$. Lifespan of access tokens when dual-token mode is enabled (default `15`).
+- `refresh_token_expire_days` (optional): Integer $\ge 1$. Lifespan of refresh tokens when dual-token mode is enabled (defaults to `session_duration_days`).
 
 Response:
 
@@ -203,3 +239,4 @@ Response:
   "message": "JWT configured successfully"
 }
 ```
+

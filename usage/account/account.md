@@ -101,15 +101,18 @@ All parameters are optional.
   `status`          `str`             `None`            Account status.
   ------------------------------------------------------------------------
 
-### Password Handling
+### Password Handling & Policy
 
 Passwords should always be passed as raw/plain text to the SDK:
 
 ``` python
-password="123456"
+password="Password123"
 ```
 
-The SDK automatically hashes the password before storing it in the
+> [!IMPORTANT]
+> **Password Policy**: Passwords must be at least 6 characters long and contain at least one uppercase letter, one lowercase letter, and one number. Failing this policy raises `WeakPasswordError` (HTTP 400).
+
+The SDK automatically hashes valid passwords before storing them in the
 database.
 
 ### Unique Fields
@@ -125,7 +128,7 @@ The following fields must be unique:
 ``` python
 result = auth.account.create_user(
     name="Test User",
-    password="123456",
+    password="Password123",
     email="testuser@example.com",
     handle="testuser",
     avatar_url="https://example.com/avatar.jpg",
@@ -329,10 +332,10 @@ values remain unchanged.
 
 ## Password Handling
 
-The password must be supplied as raw/plain text:
+The password must be supplied as raw/plain text and satisfy the password policy (min 6 characters, uppercase, lowercase, digit):
 
 ``` python
-password="updatedpassword"
+password="UpdatedPassword123"
 ```
 
 The SDK automatically hashes the password before storing it.
@@ -349,7 +352,7 @@ updated_user = auth.account.super_update(
     phone="+651234567890",
     role="admin",
     status="active",
-    password="updatedpassword",
+    password="UpdatedPassword123",
 )
 ```
 
@@ -376,12 +379,12 @@ auth.account.update_password(...)
 
 ## Password Handling
 
-The password is automatically hashed before being stored.
+The password must satisfy the password policy (minimum 6 characters, at least 1 uppercase letter, 1 lowercase letter, 1 number) and is automatically hashed before being stored.
 
 ``` python
 result = auth.account.update_password(
     account_id=1,
-    password="updatedpassword",
+    password="UpdatedPassword123",
 )
 ```
 

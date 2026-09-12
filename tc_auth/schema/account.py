@@ -1,4 +1,5 @@
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, EmailStr, ConfigDict, field_validator
+from ..utils.password_policy import validate_password_strength
 
 
 class SuperUpdateSchema(BaseModel):
@@ -14,6 +15,13 @@ class SuperUpdateSchema(BaseModel):
     status: str | None = None  
     password: str | None = None
 
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v: str | None) -> str | None:
+        if v is not None:
+            validate_password_strength(v)
+        return v
+
 
 class SuperCreateSchema(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -27,6 +35,13 @@ class SuperCreateSchema(BaseModel):
     status: str | None = None  
     password: str | None = None
 
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v: str | None) -> str | None:
+        if v is not None:
+            validate_password_strength(v)
+        return v
+
 
 class SuperDeleteSchema(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -37,6 +52,12 @@ class SuperDeleteSchema(BaseModel):
 class UpdatePassword(BaseModel):
     model_config = ConfigDict(extra="forbid")
     password: str
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        validate_password_strength(v)
+        return v
 
 
 class UpdateSchema(BaseModel):

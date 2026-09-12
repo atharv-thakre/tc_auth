@@ -15,8 +15,17 @@ The `auth.service` module provides the main authentication operations:
 login response structure:
 
 ``` python
+# Single-token mode (default)
 {
     "access_token": access_token,
+    "token_type": "Bearer",
+    "account": account
+}
+
+# Dual-token mode (when dual_token_mode=True in auth.jwt.config)
+{
+    "access_token": access_token,
+    "refresh_token": refresh_token,
     "token_type": "Bearer",
     "account": account
 }
@@ -28,6 +37,9 @@ login response structure:
   `access_token`          `str`                   Access token generated
                                                   for the authenticated
                                                   session.
+
+  `refresh_token`         `str` (optional)        Long-lived token used
+                                                  to refresh access tokens.
 
   `token_type`            `str`                   Always `"Bearer"`.
 
@@ -136,8 +148,11 @@ auth.service.signup(...)
   `ip_address`   `str`   No         `None`
   `user_agent`   `str`   No         `None`
 
-The password should be provided as plain text. The authentication system
-handles password hashing.
+### Password Policy
+Passwords should be provided as plain text. The authentication system validates password strength and handles password hashing.
+
+> [!IMPORTANT]
+> **Password Policy**: Passwords must be at least 6 characters long and contain at least one uppercase letter, one lowercase letter, and one number (e.g. `Password123`). Failing this policy raises `WeakPasswordError` (HTTP 400).
 
 ## Example
 
@@ -145,7 +160,7 @@ handles password hashing.
 response = auth.service.signup(
     name="Test User",
     email="testuser@example.com",
-    password="123456",
+    password="Password123",
     handle="testuser",
     phone="1234567890",
     role="user",
@@ -205,7 +220,7 @@ identifier="testuser"
 ``` python
 response = auth.service.login(
     identifier="testuser@example.com",
-    password="123456",
+    password="Password123",
     ip_address="127.0.0.1",
     user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
 )
@@ -263,7 +278,7 @@ response = auth.service.create_login_response(
 response = auth.service.signup(
     name="Test User",
     email="testuser@example.com",
-    password="123456",
+    password="Password123",
     handle="testuser",
 )
 
@@ -271,13 +286,13 @@ response = auth.service.signup(
 # Login using email
 response = auth.service.login(
     identifier="testuser@example.com",
-    password="123456",
+    password="Password123",
 )
 
 
 # Login using handle
 response = auth.service.login(
     identifier="testuser",
-    password="123456",
+    password="Password123",
 )
 ```

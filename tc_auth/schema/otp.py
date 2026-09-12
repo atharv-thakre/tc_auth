@@ -6,7 +6,7 @@ class CreateOTP(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     identifier: str
-    purpose: Literal["login", "signup", "reset"]  = "login"
+    purpose: Literal["signup", "login", "reset", "verify"] = "login"
     expiry: int = 60 * 5  # 5 minutes
 
 
@@ -14,6 +14,7 @@ class DeleteOTP(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     identifier: str
-    purpose: Literal["login", "signup", "reset"]  = "login"
+    purpose: Literal["signup", "login", "reset", "verify"] = "login"
+
 
 
