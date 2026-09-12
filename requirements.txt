@@ -6,7 +6,6 @@ authlib
 starlette
 itsdangerous
 httpx
-httpx2
 email-validator
 PyJWT
 bcrypt

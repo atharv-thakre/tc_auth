@@ -13,11 +13,10 @@ fastapi==0.141.1
 greenlet==3.5.5
 h11==0.16.0
 httpcore==1.0.9
-httpcore2==2.12.0
 httpx==0.28.1
-httpx2==2.12.0
 idna==3.19
 itsdangerous==2.2.0
+joserfc==1.7.5
 psycopg2-binary==2.9.12
 pyasn1==0.6.4
 pycparser==3.0
