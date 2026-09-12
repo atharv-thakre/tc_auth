@@ -16,3 +16,11 @@ class DeleteOAuth(BaseModel):
     provider: str
 
 
+class LinkOAuthRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    frontend_url: str | None = None
+    provider_user_id: str | None = None
+
+
+

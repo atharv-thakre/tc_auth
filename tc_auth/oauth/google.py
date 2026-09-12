@@ -4,6 +4,7 @@ from fastapi.responses import RedirectResponse
 
 from ..exceptions.error import (
     AuthError,
+    InvalidConfigError,
     OAuthCallbackError,
     OAuthNotConfiguredError,
 )
@@ -16,6 +17,15 @@ class GoogleOAuth:
         self.redirect_uri = None
         self.client_id = None
         self.client_secret = None
+
+    @property
+    def is_configured(self) -> bool:
+        return bool(
+            self.client is not None
+            and self.client_id
+            and self.client_secret
+            and self.redirect_uri
+        )
 
     def load(self):
         return {
@@ -31,9 +41,19 @@ class GoogleOAuth:
         client_secret: str,
         redirect_uri: str,
     ):
-        self.redirect_uri = redirect_uri
-        self.client_id = client_id
-        self.client_secret = client_secret
+        if not client_id or not isinstance(client_id, str) or not client_id.strip():
+            raise InvalidConfigError("Google OAuth", "Google client_id is required and must be a non-empty string")
+
+        if not client_secret or not isinstance(client_secret, str) or not client_secret.strip():
+            raise InvalidConfigError("Google OAuth", "Google client_secret is required and must be a non-empty string")
+
+        if not redirect_uri or not isinstance(redirect_uri, str) or not redirect_uri.strip():
+            raise InvalidConfigError("Google OAuth", "Google redirect_uri is required and must be a non-empty string")
+
+        self.redirect_uri = redirect_uri.strip()
+        self.client_id = client_id.strip()
+        self.client_secret = client_secret.strip()
+
 
         oauth = OAuth()
 
@@ -59,7 +79,7 @@ class GoogleOAuth:
         request: Request,
         frontend_url: str,
     ):
-        if self.client is None:
+        if not self.is_configured:
             raise OAuthNotConfiguredError("Google")
 
         if not frontend_url or not isinstance(frontend_url, str):
@@ -78,7 +98,7 @@ class GoogleOAuth:
         ip_address: str | None = None,
         user_agent: str | None = None,
     ):
-        if self.client is None:
+        if not self.is_configured:
             raise OAuthNotConfiguredError("Google")
 
         frontend_url = request.session.get("frontend_url", "").rstrip("/")
@@ -90,20 +110,52 @@ class GoogleOAuth:
         try:
             token = await self.client.authorize_access_token(request)
         except Exception as e:
-            raise OAuthCallbackError(f"Google authorization failed: {str(e)}")
+            raise OAuthCallbackError(f"Google authorization failed (invalid credentials or authorization code): {str(e)}")
 
         if not token or not isinstance(token, dict):
             raise OAuthCallbackError("Failed to obtain Google access token")
+
+        if "error" in token:
+            error_desc = token.get("error_description") or token.get("error")
+            raise OAuthCallbackError(f"Google authorization failed (invalid credentials): {error_desc}")
 
         user = token.get("userinfo")
         if not user or not isinstance(user, dict) or "sub" not in user:
             try:
                 user = await self.client.userinfo(token=token)
-            except Exception:
-                pass
+            except Exception as e:
+                raise OAuthCallbackError(f"Failed to obtain Google user information: {str(e)}")
 
         if not user or not isinstance(user, dict) or "sub" not in user:
             raise OAuthCallbackError("Failed to obtain Google user information")
+
+
+        link_account_id = request.session.pop("link_account_id", None)
+
+        callback_url = f"{frontend_url}/oauth/callback" if frontend_url else "/oauth/callback"
+
+        if link_account_id:
+            try:
+                self.oauth_service.link_account(
+                    account_id=int(link_account_id),
+                    provider="google",
+                    provider_user_id=user["sub"],
+                )
+                acc = self.oauth_service.get_user.by_id(int(link_account_id))
+                self.oauth_service._initialize_profile(
+                    provider="google",
+                    account=acc,
+                    name=user.get("name"),
+                    email=user.get("email"),
+                    avatar_url=user.get("picture"),
+                )
+                return RedirectResponse(
+                    f"{callback_url}?linked=true&provider=google"
+                )
+            except Exception as e:
+                return RedirectResponse(
+                    f"{callback_url}?linked=false&provider=google&error={str(e)}"
+                )
 
         result = self.oauth_service.login(
             provider="google",
@@ -115,7 +167,10 @@ class GoogleOAuth:
             user_agent=user_agent,
         )
 
-        callback_url = f"{frontend_url}/oauth/callback" if frontend_url else "/oauth/callback"
+        redirect_params = f"access_token={result['access_token']}"
+        if result.get("refresh_token"):
+            redirect_params += f"&refresh_token={result['refresh_token']}"
+
         return RedirectResponse(
-            f"{callback_url}?access_token={result['access_token']}"
+            f"{callback_url}?{redirect_params}"
         )

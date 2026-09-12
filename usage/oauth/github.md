@@ -305,22 +305,33 @@ profile.
 
 ------------------------------------------------------------------------
 
+# Profile & Data Overwrite Policy
+
+When a user authenticates with GitHub:
+
+> [!IMPORTANT]
+> - **Existing Data Preservation**: GitHub **never overwrites** existing non-empty profile data (`email`, `name`, or `avatar_url`).
+> - **Empty Fields Rule**: If an account has empty or null fields (`name`, `email`, `avatar_url`), GitHub is permitted to populate all of them.
+> - **Auto-Linking by Email**: If an existing account matches the user's primary verified GitHub email (case-insensitively), GitHub is automatically linked without creating a duplicate account.
+
+------------------------------------------------------------------------
+
 # Callback Redirect
 
-After successful authentication, the callback redirects the user to:
+After successful authentication, the callback redirects the user back to the frontend:
 
 ``` text
-{frontend_url}/oauth/callback?access_token=...
+# Single-Token Mode (Default):
+{frontend_url}/oauth/callback?access_token=YOUR_ACCESS_TOKEN
+
+# Dual-Token Mode:
+{frontend_url}/oauth/callback?access_token=YOUR_ACCESS_TOKEN&refresh_token=YOUR_REFRESH_TOKEN
+
+# When Linking a Logged-In Account:
+{frontend_url}/oauth/callback?linked=true&provider=github
 ```
 
-For example:
-
-``` text
-https://app.example.com/oauth/callback?access_token=YOUR_ACCESS_TOKEN
-```
-
-The frontend can then process the access token and continue the
-authenticated session.
+The frontend can then process the tokens from the callback URL and continue the authenticated session.
 
 ------------------------------------------------------------------------
 

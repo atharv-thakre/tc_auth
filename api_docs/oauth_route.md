@@ -9,14 +9,14 @@ Authentication:
 
 Flow notes:
 
-- `/google/login` and `/github/login` redirect the browser to the provider authorization page.
-- The callback endpoints exchange the provider code, create or link the local account, and then redirect to the frontend callback URL with `access_token` in the query string.
+- `/google/login`, `/github/login`, and `/discord/login` redirect the browser to the provider authorization page.
+- The callback endpoints exchange the provider code, create or link the local account, and then redirect to the frontend callback URL with `access_token` (and `refresh_token` in dual-token mode, or `linked=true` for account linking).
 - `frontend_url` is stored in the session during the login step and reused during the callback.
 
 Common response:
 
-- Login endpoints return a redirect response rather than JSON.
-- Callback endpoints also return a redirect response rather than JSON.
+- Login endpoints return a redirect response (`HTTP 307`) rather than JSON.
+- Callback endpoints also return a redirect response (`HTTP 307`) rather than JSON.
 
 ## GET `/google/login`
 
@@ -46,12 +46,12 @@ Request parameters:
 
 Response:
 
-- Redirect to `${frontend_url}/oauth/callback?access_token=...`.
+- Redirect to `${frontend_url}/oauth/callback?access_token=...` (plus `&refresh_token=...` in dual-token mode, or `?linked=true&provider=google` for linking).
 
 Example:
 
 ```js
-// Usually handled by the browser after Google redirects back.
+// Handled by the browser redirect to frontend callback router.
 ```
 
 ## GET `/github/login`
@@ -82,10 +82,47 @@ Request parameters:
 
 Response:
 
-- Redirect to `${frontend_url}/oauth/callback?access_token=...`.
+- Redirect to `${frontend_url}/oauth/callback?access_token=...` (plus `&refresh_token=...` in dual-token mode, or `?linked=true&provider=github` for linking).
 
 Example:
 
 ```js
-// Usually handled by the browser after GitHub redirects back.
+// Handled by the browser redirect to frontend callback router.
 ```
+
+## GET `/discord/login`
+
+Starts the Discord OAuth login flow.
+
+Query parameters:
+
+- `frontend_url` - frontend callback base URL to return to after the OAuth exchange.
+
+Response:
+
+- Redirect to Discord authorization.
+
+Example:
+
+```js
+window.location.href = `${baseUrl}/tc-auth/discord/login?frontend_url=${encodeURIComponent(frontendUrl)}`;
+```
+
+## GET `/discord/callback`
+
+Discord OAuth callback endpoint.
+
+Request parameters:
+
+- Provider query parameters such as `code`, `state`, or error fields are supplied by Discord.
+
+Response:
+
+- Redirect to `${frontend_url}/oauth/callback?access_token=...` (plus `&refresh_token=...` in dual-token mode, or `?linked=true&provider=discord` for linking).
+
+Example:
+
+```js
+// Handled by the browser redirect to frontend callback router.
+```
+

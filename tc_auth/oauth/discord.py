@@ -10,7 +10,7 @@ from ..exceptions.error import (
 )
 
 
-class GitHubOAuth:
+class DiscordOAuth:
     def __init__(self, oauth_service):
         self.oauth_service = oauth_service
         self.client = None
@@ -42,36 +42,35 @@ class GitHubOAuth:
         redirect_uri: str,
     ):
         if not client_id or not isinstance(client_id, str) or not client_id.strip():
-            raise InvalidConfigError("GitHub OAuth", "GitHub client_id is required and must be a non-empty string")
+            raise InvalidConfigError("Discord OAuth", "Discord client_id is required and must be a non-empty string")
 
         if not client_secret or not isinstance(client_secret, str) or not client_secret.strip():
-            raise InvalidConfigError("GitHub OAuth", "GitHub client_secret is required and must be a non-empty string")
+            raise InvalidConfigError("Discord OAuth", "Discord client_secret is required and must be a non-empty string")
 
         if not redirect_uri or not isinstance(redirect_uri, str) or not redirect_uri.strip():
-            raise InvalidConfigError("GitHub OAuth", "GitHub redirect_uri is required and must be a non-empty string")
+            raise InvalidConfigError("Discord OAuth", "Discord redirect_uri is required and must be a non-empty string")
 
         self.redirect_uri = redirect_uri.strip()
         self.client_id = client_id.strip()
         self.client_secret = client_secret.strip()
 
-
         oauth = OAuth()
 
         self.client = oauth.register(
-            name="github",
+            name="discord",
             client_id=client_id,
             client_secret=client_secret,
-            access_token_url="https://github.com/login/oauth/access_token",
-            authorize_url="https://github.com/login/oauth/authorize",
-            api_base_url="https://api.github.com/",
+            access_token_url="https://discord.com/api/oauth2/token",
+            authorize_url="https://discord.com/api/oauth2/authorize",
+            api_base_url="https://discord.com/api/",
             client_kwargs={
-                "scope": "read:user user:email",
+                "scope": "identify email",
             },
         )
 
         return {
             "success": True,
-            "message": "GitHub OAuth configured successfully",
+            "message": "Discord OAuth configured successfully",
         }
 
     async def login(
@@ -80,7 +79,7 @@ class GitHubOAuth:
         frontend_url: str,
     ):
         if not self.is_configured:
-            raise OAuthNotConfiguredError("GitHub")
+            raise OAuthNotConfiguredError("Discord")
 
         if not frontend_url or not isinstance(frontend_url, str):
             raise AuthError("frontend_url parameter is required")
@@ -99,10 +98,12 @@ class GitHubOAuth:
         user_agent: str | None = None,
     ):
         if not self.is_configured:
-            raise OAuthNotConfiguredError("GitHub")
+            raise OAuthNotConfiguredError("Discord")
 
         frontend_url = request.session.get("frontend_url", "").rstrip("/")
         request.session.pop("frontend_url", None)
+
+        link_account_id = request.session.pop("link_account_id", None)
 
         if not frontend_url:
             frontend_url = ""
@@ -110,90 +111,93 @@ class GitHubOAuth:
         try:
             token = await self.client.authorize_access_token(request)
         except Exception as e:
-            raise OAuthCallbackError(f"GitHub authorization failed (invalid credentials or authorization code): {str(e)}")
+            raise OAuthCallbackError(f"Discord authorization failed (invalid credentials or authorization code): {str(e)}")
 
         if not token or not isinstance(token, dict):
-            raise OAuthCallbackError("Failed to obtain GitHub access token")
+            raise OAuthCallbackError("Failed to obtain Discord access token")
 
         if "error" in token:
             error_desc = token.get("error_description") or token.get("error")
-            raise OAuthCallbackError(f"GitHub authorization failed (invalid credentials): {error_desc}")
+            raise OAuthCallbackError(f"Discord authorization failed (invalid credentials): {error_desc}")
 
         if not token.get("access_token"):
-            raise OAuthCallbackError("GitHub authorization failed: Missing access token in response")
+            raise OAuthCallbackError("Discord authorization failed: Missing access token in response")
 
         try:
             user_response = await self.client.get(
-                "user",
+                "users/@me",
                 token=token,
             )
             if hasattr(user_response, "status_code") and user_response.status_code != 200:
-                raise OAuthCallbackError(f"GitHub API returned status {user_response.status_code}")
+                raise OAuthCallbackError(f"Discord API returned status {user_response.status_code}")
             user = user_response.json()
         except OAuthCallbackError:
             raise
         except Exception as e:
-            raise OAuthCallbackError(f"Failed to fetch GitHub profile: {str(e)}")
+            raise OAuthCallbackError(f"Failed to fetch Discord profile: {str(e)}")
 
         if not isinstance(user, dict) or "id" not in user:
-            raise OAuthCallbackError("Invalid GitHub profile response: Missing user ID")
-
-
-        email = user.get("email")
-
-        if email is None:
-            try:
-                emails_response = await self.client.get(
-                    "user/emails",
-                    token=token,
-                )
-                emails = emails_response.json()
-
-                if isinstance(emails, list):
-                    for item in emails:
-                        if (
-                            isinstance(item, dict)
-                            and item.get("primary")
-                            and item.get("verified")
-                        ):
-                            email = item.get("email")
-                            break
-            except Exception:
-                pass
+            raise OAuthCallbackError("Invalid Discord profile response: Missing user ID")
 
         provider_user_id = str(user["id"])
-        link_account_id = request.session.pop("link_account_id", None)
+        name = user.get("global_name") or user.get("username")
+
+        # Handle Discord email verification edge cases
+        email = None
+        raw_email = user.get("email")
+        if raw_email and isinstance(raw_email, str) and raw_email.strip():
+            # If user has an email and verified is not False, use it
+            if user.get("verified") is not False:
+                email = raw_email.strip().lower()
+
+        # Handle Discord avatar edge cases (GIF if 'a_' prefix, PNG otherwise, default avatar fallback)
+        avatar_hash = user.get("avatar")
+        if avatar_hash and isinstance(avatar_hash, str) and avatar_hash.strip():
+            ext = "gif" if avatar_hash.startswith("a_") else "png"
+            avatar_url = f"https://cdn.discordapp.com/avatars/{user['id']}/{avatar_hash}.{ext}"
+        else:
+            try:
+                discrim = user.get("discriminator", "0")
+                if discrim and discrim != "0":
+                    default_idx = int(discrim) % 5
+                else:
+                    default_idx = (int(user["id"]) >> 22) % 6
+                avatar_url = f"https://cdn.discordapp.com/embed/avatars/{default_idx}.png"
+            except Exception:
+                avatar_url = None
+
         callback_url = f"{frontend_url}/oauth/callback" if frontend_url else "/oauth/callback"
 
+        # Account linking flow for existing logged-in user
         if link_account_id:
             try:
                 self.oauth_service.link_account(
                     account_id=int(link_account_id),
-                    provider="github",
+                    provider="discord",
                     provider_user_id=provider_user_id,
                 )
                 acc = self.oauth_service.get_user.by_id(int(link_account_id))
                 self.oauth_service._initialize_profile(
-                    provider="github",
+                    provider="discord",
                     account=acc,
-                    name=user.get("name"),
+                    name=name,
                     email=email,
-                    avatar_url=user.get("avatar_url"),
+                    avatar_url=avatar_url,
                 )
                 return RedirectResponse(
-                    f"{callback_url}?linked=true&provider=github"
+                    f"{callback_url}?linked=true&provider=discord"
                 )
             except Exception as e:
                 return RedirectResponse(
-                    f"{callback_url}?linked=false&provider=github&error={str(e)}"
+                    f"{callback_url}?linked=false&provider=discord&error={str(e)}"
                 )
 
         result = self.oauth_service.login(
-            provider="github",
+            provider="discord",
             provider_user_id=provider_user_id,
-            name=user.get("name"),
+            name=name,
             email=email,
-            avatar_url=user.get("avatar_url"),
+            avatar_url=avatar_url,
             ip_address=ip_address,
             user_agent=user_agent,
         )

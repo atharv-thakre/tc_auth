@@ -28,19 +28,25 @@ link_res = auth.oauth.link_account(
     provider_user_id="1234567890",
 )
 
-# 4. Unlink OAuth provider from account
+# 4. Safe unlink OAuth provider from account (enforces lockout protection)
 unlink_res = auth.oauth.unlink_account(
     account_id=1,
     provider="github",
+    enforce_active_auth=True,  # Prevents lockout if account has no password or other links
 )
 
-# 5. Get paginated OAuth account links
+# 5. Get all connected OAuth providers for an account
+user_links = auth.oauth.get_account_links(
+    account_id=1,
+)
+
+# 6. Get paginated OAuth account links (admin)
 oauth_links = auth.oauth.get_all(
     page=1,
     limit=10,
 )
 
-# 6. Query OAuth links by field
+# 7. Query OAuth links by field
 queried_links = auth.oauth.query(
     field="id",
     value="1",

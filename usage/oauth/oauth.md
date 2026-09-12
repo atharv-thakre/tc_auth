@@ -18,7 +18,11 @@ management of OAuth provider links.
   `link_account()`                    Link an OAuth provider account to
                                       an existing account.
 
-  `unlink_account()`                  Remove an OAuth provider link.
+  `unlink_account()`                  Remove an OAuth provider link
+                                      (supports lockout prevention).
+
+  `get_account_links()`               Get all active OAuth provider
+                                      links for a specific account.
 
   `get_all()`                         Get a paginated list of OAuth
                                       accounts.
@@ -41,7 +45,7 @@ auth.oauth.login(...)
 
   Parameter            Type    Description
   -------------------- ------- -----------------------------------------
-  `provider`           `str`   OAuth provider name, such as `github`.
+  `provider`           `str`   OAuth provider name (`google`, `github`, `discord`).
   `provider_user_id`   `str`   User ID provided by the OAuth provider.
 
 ## Optional Parameters
@@ -58,42 +62,13 @@ auth.oauth.login(...)
 
 When an OAuth login is performed:
 
-1.  If the OAuth account is already linked, the linked account is used.
-2.  If the OAuth account is not linked to an account, a new account is
-    created.
-3.  The new account is automatically linked to the OAuth provider
-    account using the user's email.
-4.  A login response is returned.
-5.  A session record is created.
-
-`ip_address` and `user_agent` are optional. If they are not provided,
-`None` is used.
-
-## Example
-
-``` python
-response = auth.oauth.login(
-    provider="github",
-    provider_user_id="1234567890",
-    name="testuser",
-    email="testuser@example.com",
-    avatar_url="https://example.com/avatar.jpg",
-    ip_address="127.0.0.1",
-    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-)
-```
-
-## Returns
-
-Returns the standard login response:
-
-``` python
-{
-    "access_token": access_token,
-    "token_type": "Bearer",
-    "account": account
-}
-```
+1.  If the OAuth provider account is already linked, the linked account is used.
+2.  If not linked yet, the system checks for an existing account matching the provider's verified email (case-insensitively).
+3.  If an existing account is found, it automatically links the OAuth provider to that account.
+4.  If no matching account exists, a new user account is created and linked.
+5.  **Empty fields rule:** If the account has empty/missing fields (`name`, `email`, `avatar_url`), all 3 providers can populate them.
+6.  **Overwrite rule:** Non-empty existing data is preserved, except that Google OAuth is permitted to overwrite the email address.
+7.  A login response and an active session are created and returned.
 
 ------------------------------------------------------------------------
 
@@ -185,12 +160,15 @@ auth.oauth.unlink_account(...)
 
 ## Parameters
 
-  Parameter      Type    Required
-  -------------- ------- ----------
-  `account_id`   `int`   Yes
-  `provider`     `str`   Yes
+  Parameter               Type    Required   Default   Description
+  ----------------------- ------- ---------- --------- ---------------------------------------------
+  `account_id`            `int`   Yes        ---       The ID of the local account.
+  `provider`              `str`   Yes        ---       The provider to unlink (`google`, `github`, `discord`).
+  `enforce_active_auth`   `bool`  No         `False`   When `True`, prevents unlinking if the account has no password and no other active OAuth links.
 
-All parameters are mandatory.
+## Lockout Prevention (`enforce_active_auth=True`)
+
+When `enforce_active_auth=True`, the method checks whether the account has an active password (`password_hash`) or at least one other active OAuth provider. If unlinking would leave the account with no authentication method, an `AuthError` (HTTP 400) is raised.
 
 ## Example
 
@@ -198,6 +176,7 @@ All parameters are mandatory.
 response = auth.oauth.unlink_account(
     account_id=1,
     provider="github",
+    enforce_active_auth=True,
 )
 ```
 
@@ -206,8 +185,45 @@ response = auth.oauth.unlink_account(
 ``` python
 {
     "success": True,
-    "message": "OAuth link removed successfully"
+    "message": "OAuth link for 'github' removed successfully"
 }
+```
+
+------------------------------------------------------------------------
+
+# `get_account_links()`
+
+Returns all active OAuth providers linked to a specific user account.
+
+``` python
+links = auth.oauth.get_account_links(account_id=1)
+```
+
+## Parameters
+
+  Parameter      Type    Required   Description
+  -------------- ------- ---------- -----------------------------
+  `account_id`   `int`   Yes        The ID of the user account.
+
+## Returns
+
+``` python
+[
+    {
+        "id": 1,
+        "account_id": 1,
+        "provider": "google",
+        "provider_user_id": "1092837192",
+        "created_at": "2026-09-12T12:00:00"
+    },
+    {
+        "id": 2,
+        "account_id": 1,
+        "provider": "github",
+        "provider_user_id": "84729104",
+        "created_at": "2026-09-12T12:05:00"
+    }
+]
 ```
 
 ------------------------------------------------------------------------
@@ -378,14 +394,15 @@ uses the following structure:
 
 # Return Summary
 
-  Method               Return
-  -------------------- ------------------------------------------
-  `login()`            `dict` --- Login response
-  `find_oauth()`       `dict` --- OAuth account
-  `link_account()`     `dict` --- OAuth account
-  `unlink_account()`   `dict` --- `{"success": True, "message": "..."}`
-  `get_all()`          `list[dict]` --- OAuth accounts
-  `query()`            `list[dict]` --- Matching OAuth accounts
+  Method                 Return
+  ---------------------- ------------------------------------------
+  `login()`              `dict` --- Login response
+  `find_oauth()`         `dict` --- OAuth account
+  `link_account()`       `dict` --- OAuth account
+  `unlink_account()`     `dict` --- `{"success": True, "message": "..."}`
+  `get_account_links()`  `list[dict]` --- Connected OAuth accounts for account
+  `get_all()`            `list[dict]` --- OAuth accounts
+  `query()`              `list[dict]` --- Matching OAuth accounts
 
 ------------------------------------------------------------------------
 
@@ -419,14 +436,21 @@ oauth_account = auth.oauth.link_account(
 )
 
 
-# Unlink OAuth account
+# Unlink OAuth account (with lockout prevention)
 result = auth.oauth.unlink_account(
     account_id=1,
     provider="github",
+    enforce_active_auth=True,
 )
 
 
-# Get all OAuth accounts
+# Get user's linked OAuth providers
+user_links = auth.oauth.get_account_links(
+    account_id=1,
+)
+
+
+# Get all OAuth accounts (admin)
 oauth_accounts = auth.oauth.get_all(
     page=1,
     limit=10,

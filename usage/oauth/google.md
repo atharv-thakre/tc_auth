@@ -248,22 +248,33 @@ auth.oauth.login(
 
 ------------------------------------------------------------------------
 
+# Profile & Email Overwrite Policy
+
+When a user authenticates with Google:
+
+> [!IMPORTANT]
+> - **Email Overwrite**: If an existing account is matched, **Google OAuth is explicitly permitted to overwrite the existing email** with Google's verified email address (or set it during sign-up).
+> - **Empty Fields Rule**: If an account has empty or null fields (`name`, `email`, `avatar_url`), Google is permitted to populate all of them.
+> - **Data Preservation**: Non-empty existing `name` and `avatar_url` are preserved and **never overwritten**.
+
+------------------------------------------------------------------------
+
 # Callback Redirect
 
-After successful authentication, the callback redirects the user to:
+After successful authentication, the callback redirects the user back to the frontend:
 
 ``` text
-{frontend_url}/oauth/callback?access_token=...
+# Single-Token Mode (Default):
+{frontend_url}/oauth/callback?access_token=YOUR_ACCESS_TOKEN
+
+# Dual-Token Mode:
+{frontend_url}/oauth/callback?access_token=YOUR_ACCESS_TOKEN&refresh_token=YOUR_REFRESH_TOKEN
+
+# When Linking a Logged-In Account:
+{frontend_url}/oauth/callback?linked=true&provider=google
 ```
 
-For example:
-
-``` text
-https://app.example.com/oauth/callback?access_token=YOUR_ACCESS_TOKEN
-```
-
-The frontend can read the access token from the callback URL and
-continue the authenticated session.
+The frontend callback router reads the parameters, stores the token, and continues the authenticated session.
 
 ------------------------------------------------------------------------
 
