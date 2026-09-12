@@ -8,7 +8,9 @@ from config import config
 engine = create_engine("postgresql://workspace:admin@localhost:5432/tc_auth", echo=False)
 
 app = FastAPI()
-auth = Auth(engine, app)
+auth = Auth(engine)
+
+auth.include_routes(app=app)
 
 app.add_middleware(
     CORSMiddleware,
@@ -29,38 +31,38 @@ auth.jwt.config(
 )
 
 
-auth.email.config(
-    host=config.EMAIL_HOST,
-    port=config.EMAIL_PORT,
-    username=config.EMAIL_USERNAME,
-    password=config.EMAIL_PASSWORD,
-    sender=config.EMAIL_SENDER,
-    use_tls=config.EMAIL_USE_TLS,
-)
+# auth.email.config(
+#     host=config.EMAIL_HOST,
+#     port=config.EMAIL_PORT,
+#     username=config.EMAIL_USERNAME,
+#     password=config.EMAIL_PASSWORD,
+#     sender=config.EMAIL_SENDER,
+#     use_tls=config.EMAIL_USE_TLS,
+# )
 
 
-if config.GOOGLE_CLIENT_ID and config.GOOGLE_CLIENT_SECRET:
-    auth.google.config(
-        client_id=config.GOOGLE_CLIENT_ID,
-        client_secret=config.GOOGLE_CLIENT_SECRET,
-        redirect_uri=config.GOOGLE_REDIRECT_URI,
-    )
+# if config.GOOGLE_CLIENT_ID and config.GOOGLE_CLIENT_SECRET:
+#     auth.google.config(
+#         client_id=config.GOOGLE_CLIENT_ID,
+#         client_secret=config.GOOGLE_CLIENT_SECRET,
+#         redirect_uri=config.GOOGLE_REDIRECT_URI,
+#     )
 
 
-if config.GITHUB_CLIENT_ID and config.GITHUB_CLIENT_SECRET:
-    auth.github.config(
-        client_id=config.GITHUB_CLIENT_ID,
-        client_secret=config.GITHUB_CLIENT_SECRET,
-        redirect_uri=config.GITHUB_REDIRECT_URI,
-    )
+# if config.GITHUB_CLIENT_ID and config.GITHUB_CLIENT_SECRET:
+#     auth.github.config(
+#         client_id=config.GITHUB_CLIENT_ID,
+#         client_secret=config.GITHUB_CLIENT_SECRET,
+#         redirect_uri=config.GITHUB_REDIRECT_URI,
+#     )
 
 
-if config.DISCORD_CLIENT_ID and config.DISCORD_CLIENT_SECRET:
-    auth.discord.config(
-        client_id=config.DISCORD_CLIENT_ID,
-        client_secret=config.DISCORD_CLIENT_SECRET,
-        redirect_uri=config.DISCORD_REDIRECT_URI,
-    )
+# if config.DISCORD_CLIENT_ID and config.DISCORD_CLIENT_SECRET:
+#     auth.discord.config(
+#         client_id=config.DISCORD_CLIENT_ID,
+#         client_secret=config.DISCORD_CLIENT_SECRET,
+#         redirect_uri=config.DISCORD_REDIRECT_URI,
+#     )
 
 
 def run():
@@ -70,7 +72,7 @@ def run():
         "main:app",
         host="0.0.0.0",
         port=8000,
-        reload=True,
+        reload=False,
     )
 
 
