@@ -1,45 +1,66 @@
-# tc_auth
+# CodeSena Auth
 
-`tc_auth` is a production-ready, modular authentication and authorization library designed specifically for **FastAPI** applications with **SQLAlchemy**.
+Production-ready authentication and authorization for FastAPI.
 
-It provides complete services for account management, password and OTP-based signup/login, session lifecycle management, email delivery, OpenID Connect / OAuth integrations (Google, GitHub & Discord), dual-token JWT architecture (access + refresh tokens), password policy enforcement, multi-provider account linking, and role/status-based access control dependencies.
-
----
-
-## Key Features
-
-- **Decoupled Architecture**: Designed to separate database/auth instantiation (`connect.py`) from FastAPI application lifecycle (`run.py`), eliminating circular dependencies across modular applications.
-- **Zero Null Responses**: Every API route and service action returns structured, standardized JSON payloads.
-- **Hierarchical Error Handling**: All exceptions inherit from `AuthError` with automatic HTTP status code mapping and standardized error formatting.
-- **Dual-Token & Session Management**: Dual-layer verification combining cryptographically hashed server-side sessions with signed JWT access tokens and optional long-lived rotating refresh tokens.
-- **Password Policy Enforcement**: Automatic password strength validation (minimum 6 characters, at least one uppercase letter, one lowercase letter, and one number).
-- **FastAPI Dependencies**: Simple dependency injection for current account, session, JWT claims, role authorization, and account status guards.
-- **OAuth Providers & Linking**: Seamless Google, GitHub, and Discord OAuth 2.0 / OpenID Connect flows with verified email auto-linking, secondary provider linking, and safe unlinking with lockout prevention.
-- **Email & OTP Service**: SMTP client with built-in HTML templating for signup, login, password reset, and email verification OTPs.
-- **Admin & Dashboard APIs**: Pre-configured routes for administrative inspection of accounts, sessions, OTPs, and OAuth links.
+- **Python package**: `tc-auth`
+- **Documentation**: https://auth.codesena.me/
+- **AI documentation**: https://auth.codesena.me/llms.txt
+- **Full AI documentation**: https://auth.codesena.me/llms-full.txt
+- **API reference**: https://auth.codesena.me/documents/api/
+- **OpenAPI**: https://auth.codesena.me/openapi.json
 
 ---
 
-## Recommended Project Structure (`connect.py` + `run.py`)
+## Table of Contents
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Architecture](#architecture)
+- [Authentication](#authentication)
+- [Authorization / RBAC](#authorization--rbac)
+- [OAuth](#oauth)
+- [OTP / Magic Links](#otp--magic-links)
+- [Sessions](#sessions)
+- [REST API](#rest-api)
+- [Error Handling](#error-handling)
+- [Configuration](#configuration)
+- [Architecture & ERD Diagrams (MODELS.md)](MODELS.md)
+- [FAQ & Comparison (FAQ.md)](FAQ.md)
+- [Documentation](#documentation)
 
-In modular FastAPI applications, feature routers often need access to authentication dependencies (`auth.deps`, `auth.role`, `auth.status`) and services. Initializing both `app` and `auth` in a single file often leads to **circular import errors**.
+---
 
-`tc_auth` solves this by decoupling initialization into two files:
+## Installation
 
+Install `tc-auth` using pip or your preferred package manager:
+
+```bash
+pip install tc-auth
 ```
+
+Ensure you have your database driver installed (e.g. `psycopg2-binary` for PostgreSQL, `asyncpg`, or `pymysql`):
+
+```bash
+pip install psycopg2-binary
+```
+
+---
+
+## Quick Start
+
+### Recommended Decoupled Structure (`connect.py` + `run.py`)
+
+To eliminate circular imports across modular routers, decouple database and auth initialization from the FastAPI app lifecycle:
+
+```text
 my_project/
-│
 ├── connect.py            # 1. Database engine, Auth instantiation & service configs
 ├── run.py                # 2. FastAPI app assembly, middleware & route registration
 ├── routers/
-│   ├── items.py          # Imports `auth` from `connect` safely (no circular imports!)
+│   ├── items.py          # Imports `auth` from `connect` safely
 │   └── users.py
-└── ...
 ```
 
-### 1. `connect.py`
-Instantiate the SQLAlchemy engine, create the `Auth` instance, and configure services (JWT, Email, OAuth):
-
+#### 1. `connect.py` (Database Engine & Auth Configuration)
 ```python
 from sqlalchemy import create_engine
 from tc_auth import Auth
@@ -55,9 +76,9 @@ auth.jwt.config(
     secret_key="your-super-secret-key",
     algorithm="HS256",
     session_duration_days=7,
-    # dual_token_mode=True,            # Optional: Enable short-lived access + rotating refresh tokens
-    # access_token_expire_minutes=15,  # Optional: Access token lifespan in minutes
-    # refresh_token_expire_days=7,     # Optional: Refresh token lifespan in days
+    dual_token_mode=True,            # Optional: Enable short-lived access + rotating refresh tokens
+    access_token_expire_minutes=15,  # Optional: Access token lifespan in minutes
+    refresh_token_expire_days=7,     # Optional: Refresh token lifespan in days
 )
 
 # Optional: Configure Email SMTP
@@ -77,23 +98,9 @@ auth.google.config(
     client_secret="YOUR_GOOGLE_CLIENT_SECRET",
     redirect_uri="https://api.example.com/tc-auth/google/callback",
 )
-
-auth.github.config(
-    client_id="YOUR_GITHUB_CLIENT_ID",
-    client_secret="YOUR_GITHUB_CLIENT_SECRET",
-    redirect_uri="https://api.example.com/tc-auth/github/callback",
-)
-
-auth.discord.config(
-    client_id="YOUR_DISCORD_CLIENT_ID",
-    client_secret="YOUR_DISCORD_CLIENT_SECRET",
-    redirect_uri="https://api.example.com/tc-auth/discord/callback",
-)
 ```
 
-### 2. Feature Routers (e.g. `routers/items.py`)
-Import `auth` directly from `connect` without touching `app`:
-
+#### 2. `routers/items.py` (Feature Router using Dependencies)
 ```python
 from fastapi import APIRouter, Depends
 from connect import auth
@@ -102,18 +109,17 @@ router = APIRouter(prefix="/items", tags=["Items"])
 
 # Protected route using auth dependency
 @router.get("/")
-def get_items(user=Depends(auth.deps.get_current)):
-    return {"user_id": user["account"]["id"], "items": []}
+def get_items(current_user=Depends(auth.deps.get_current_user)):
+    account = current_user["account"]
+    return {"user_id": account["id"], "name": account["name"], "items": []}
 
 # Admin-only route using role dependency
 @router.post("/admin-only")
 def create_special_item(admin=Depends(auth.role.require("admin"))):
-    return {"status": "created by admin", "account": admin}
+    return {"status": "created by admin", "account_id": admin["id"]}
 ```
 
-### 3. `run.py`
-Assemble the FastAPI app, register `auth` routes, include feature routers, and start Uvicorn:
-
+#### 3. `run.py` (FastAPI App Mounting & Server Startup)
 ```python
 import uvicorn
 from fastapi import FastAPI
@@ -127,83 +133,250 @@ app = FastAPI(title="My Application")
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://app.example.com"],
+    allow_origins=["https://app.example.com", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Wire tc_auth routes (prefix defaults to "/tc-auth" and is configurable: auth.include_routes(app, prefix="/tc-auth"))
-auth.include_routes(app)
+# Initialize database tables
+auth.init()
+
+# Wire tc_auth routes (prefix defaults to "/tc-auth")
+auth.include_routes(app, prefix="/tc-auth")
 
 # Include your custom feature routers
 app.include_router(items_router)
 
-def run():
-    uvicorn.run("run:app", host="0.0.0.0", port=8000, reload=True)
-
 if __name__ == "__main__":
-    run()
+    uvicorn.run("run:app", host="0.0.0.0", port=8000, reload=True)
 ```
 
 ---
 
-## Single-File Setup (Quickstart)
+## Architecture
 
-For simple scripts or prototypes, you can pass `app` directly to `Auth`:
+`tc_auth` provides a multi-tier security and session validation engine backed by SQLAlchemy:
+
+```text
+[ Incoming API Request with Bearer Token ]
+                    │
+                    ▼
+     1. Verify JWT Signature & Expiry
+                    │ (Extracts aid, sid, token secret)
+                    ▼
+     2. Lookup Session in DB by sid
+                    │
+                    ▼
+     3. Verify SHA-256(token secret) == session.token_hash
+                    │
+                    ▼
+     4. Check session.expires_at > now()
+                    │
+                    ▼
+     5. Lookup Account by aid
+                    │
+                    ▼
+   [ Grant Access & Inject Dependencies ]
+```
+
+### Core Database Models
+1. **`Account` (`accounts`)**: Primary user model with `id`, `uid` (UUID), `email`, `handle`, `phone`, `password_hash`, `avatar_url`, `role`, `status`, and timestamps.
+2. **`Session` (`sessions`)**: Server-side active sessions with `token_hash` (`sha256(secret)`), `ip_address`, `user_agent`, and `expires_at`.
+3. **`OTP` (`otps`)**: 6-digit numeric verification codes with `code_hash`, `purpose` (`signup`, `login`, `reset`, `verify`), `attempts`, and `expires_at`.
+4. **`OAuthAccount` (`oauth_accounts`)**: Third-party provider links (`google`, `github`, `discord`) bound to `account_id` with cascade deletion.
+
+---
+
+## Authentication
+
+### Password Authentication
+- **Signup**: `POST /tc-auth/signup/password` with `{ "name", "email", "password", "handle"? }`
+- **Login**: `POST /tc-auth/login/password` with `{ "identifier", "password" }`
+- **Password Strength Engine**: Enforces minimum 6 characters with $\ge 1$ uppercase letter, $\ge 1$ lowercase letter, and $\ge 1$ numeric digit.
+
+### Dual-Token Architecture
+- **Single-Token Mode** *(Default)*: Returns a long-lived signed JWT access token.
+- **Dual-Token Mode** *(Enabled via `dual_token_mode=True`)*: Returns a short-lived **Access Token (15 min)** and a long-lived **Refresh Token (7 days)**.
+- **Refresh Token Endpoint**: `POST /tc-auth/token/refresh` with `{ "refresh_token": "..." }`.
+
+---
+
+## Authorization / RBAC
+
+Declarative dependency injection guards for FastAPI routes:
 
 ```python
-from fastapi import FastAPI
-from sqlalchemy import create_engine
-from tc_auth import Auth
+from fastapi import APIRouter, Depends
+from connect import auth
 
-app = FastAPI()
-engine = create_engine("sqlite:///./test.db")
+router = APIRouter()
 
-# Automatically registers exception handlers, session middleware, and routes
-auth = Auth(engine=engine, app=app)
+# 1. Inject Current User Context (account + session + JWT claims)
+@router.get("/me")
+def get_me(user=Depends(auth.deps.get_current_user)):
+    return user["account"]
+
+# 2. Require Exact Role
+@router.delete("/admin/purge")
+def admin_purge(admin=Depends(auth.role.require("admin"))):
+    return {"status": "purged"}
+
+# 3. Allow Any of Specified Roles
+@router.get("/analytics")
+def analytics(user=Depends(auth.role.allow("admin", "manager", "auditor"))):
+    return {"data": [1, 2, 3]}
+
+# 4. Block Blacklisted Roles
+@router.post("/comment")
+def post_comment(user=Depends(auth.role.block("banned", "guest"))):
+    return {"message": "Comment posted"}
+
+# 5. Enforce Account Status Guards
+@router.post("/transfer")
+def transfer_funds(account=Depends(auth.status.require("active"))):
+    return {"message": "Transfer successful"}
 ```
 
 ---
 
-## Core SDK Services & Modules
+## OAuth
 
-| Module Attribute | Class / Service | Description |
-|---|---|---|
-| `auth.account` | `AccountService` | Create, update, super-update, delete, and query accounts |
-| `auth.service` | `AuthService` | User signup, credential login, token generation, and password update |
-| `auth.session` | `SessionService` | Create, validate, query, destroy, and cleanup active sessions |
-| `auth.otp` | `OTPService` | Generate, verify, revoke, query, and cleanup OTP records |
-| `auth.get_user` | `GetUserService` | Look up accounts by ID, UID, email, handle, or phone |
-| `auth.deps` | `AuthDeps` | FastAPI dependencies (`get_current`, `get_current_account`, etc.) |
-| `auth.role` | `RoleDeps` | Role-based access control (`require`, `allow`, `block`) |
-| `auth.status` | `StatusDeps` | Account status access control (`require`, `allow`, `block`) |
-| `auth.email` | `EmailService` | SMTP email dispatch and OTP email workflows |
-| `auth.jwt` | `jwt_handler` | JWT access token encoding, decoding, and verification |
-| `auth.google` | `GoogleOAuth` | Google OpenID Connect OAuth authorization and callback |
-| `auth.github` | `GitHubOAuth` | GitHub OAuth authorization and callback |
-| `auth.discord` | `DiscordOAuth` | Discord OAuth authorization and callback |
-| `auth.oauth` | `OAuthService` | Provider login, multi-provider account linking, and safe unlinking |
-| `auth.dashboard` | `DashboardService` | System counts and administrative statistics |
+Native integration for **Google**, **GitHub**, and **Discord** OAuth 2.0 / OpenID Connect:
+
+### Features:
+- **Verified Email Auto-Linking**: If a user signs in via OAuth with an email matching an existing account, the provider is automatically linked safely.
+- **Authenticated Account Linking**: Logged-in users can link secondary providers via `POST /tc-auth/account/oauth/link/{provider}`.
+- **Lockout Prevention Guardrails**: Users cannot unlink their last provider via `DELETE /tc-auth/account/oauth/{provider}` if no password is set, preventing account lockout.
+
+### Configuration in `connect.py`:
+```python
+auth.google.config(client_id="...", client_secret="...", redirect_uri="https://api.app.com/tc-auth/google/callback")
+auth.github.config(client_id="...", client_secret="...", redirect_uri="https://api.app.com/tc-auth/github/callback")
+auth.discord.config(client_id="...", client_secret="...", redirect_uri="https://api.app.com/tc-auth/discord/callback")
+```
 
 ---
 
-## Database Initialization & Teardown
+## OTP / Magic Links
+
+Dual-pathway authentication inside every email:
+
+1. **One-Click CTA Button ("Click to Proceed")**: Clicking the Magic Link verifies and authenticates the user directly.
+2. **Manual 6-Digit OTP Code**: Prominently displayed for users opening email on a separate device.
+
+### Endpoints:
+- `POST /tc-auth/send/email/otp/{purpose}`: Dispatches OTP + Magic Link email (`signup`, `login`, `reset`, `verify`).
+- `POST /tc-auth/send/email/link/{purpose}`: Dedicated Magic Link request route.
+- `GET /tc-auth/link/{purpose}`: Browser click redirect endpoint (HTTP 307 to frontend callback router).
+- `POST /tc-auth/link/{purpose}`: Bot-safe headless verification endpoint for SPAs and enterprise email filters.
+
+---
+
+## Sessions
+
+- **Server-Side Session Hashing**: Tokens are hashed with SHA-256 before being stored in the database.
+- **Single-Device Logout**: `POST /tc-auth/logout` revokes the current session immediately.
+- **Logout Everywhere**: `POST /tc-auth/logout-all` terminates all active sessions across all devices for the user.
+- **Session Cleanup**: `DELETE /tc-auth/session/cleanup` (superadmin) purges expired sessions.
+
+---
+
+## REST API
+
+All routes are mounted under `/tc-auth` by default:
+
+| Method | Endpoint | Description | Auth Required |
+|---|---|---|:---:|
+| `POST` | `/tc-auth/signup/password` | Register with password | Public |
+| `POST` | `/tc-auth/signup/otp` | Register and verify OTP simultaneously | Public |
+| `POST` | `/tc-auth/login/password` | Login with email/handle/phone & password | Public |
+| `POST` | `/tc-auth/login/otp` | Passwordless login with email OTP | Public |
+| `POST` | `/tc-auth/forgot/password` | Reset password using verified OTP | Public |
+| `POST` | `/tc-auth/token/refresh` | Exchange refresh token for fresh access token | Public |
+| `POST` | `/tc-auth/send/email/otp/{purpose}` | Send email OTP & magic link | Public |
+| `POST` | `/tc-auth/send/email/link/{purpose}` | Send dedicated magic link email | Public |
+| `GET` | `/tc-auth/link/{purpose}` | Browser magic link redirect handler | Public |
+| `POST` | `/tc-auth/link/{purpose}` | Programmatic bot-safe magic link verification | Public |
+| `GET` | `/tc-auth/me` | Fetch user profile, session, and JWT claims | `Bearer` |
+| `PATCH` | `/tc-auth/me` | Update user profile fields | `Bearer` |
+| `PUT` | `/tc-auth/update/password` | Update current user's password | `Bearer` |
+| `POST` | `/tc-auth/logout` | Revoke current session | `Bearer` |
+| `POST` | `/tc-auth/logout-all` | Revoke all sessions across all devices | `Bearer` |
+| `GET` | `/tc-auth/account/oauth/links` | List connected OAuth providers | `Bearer` |
+| `POST` | `/tc-auth/account/oauth/link/{provider}` | Link secondary OAuth provider | `Bearer` |
+| `DELETE` | `/tc-auth/account/oauth/{provider}` | Safely unlink OAuth provider | `Bearer` |
+| `GET` | `/tc-auth/{provider}/login` | Initiate OAuth login flow | Public |
+| `GET` | `/tc-auth/{provider}/callback` | Provider OAuth redirect callback | Public |
+| `GET` | `/tc-auth/config/pulse` | Public system health check | Public |
+| `GET` | `/tc-auth/config/load/` | Inspect active service configuration | `superadmin` |
+| `GET` | `/tc-auth/config/counts` | Return total counts across all tables | `superadmin` |
+
+---
+
+## Error Handling
+
+All domain exceptions inherit from `AuthError` with automatic HTTP status code mapping and standardized JSON responses:
+
+```json
+{
+  "status": false,
+  "error": {
+    "code": "InvalidCredentialsError",
+    "message": "Invalid credentials",
+    "details": null
+  }
+}
+```
+
+### Exception Status Code Mapping:
+- **`400 Bad Request`**: `AuthError`, `WeakPasswordError`, `InvalidFieldError`, `InvalidEmailPurposeError`, `InvalidConfigError`, `OAuthCallbackError`.
+- **`401 Unauthorized`**: `InvalidCredentialsError`, `InvalidTokenError`, `OTPInvalidError`, `OTPExpiredError`.
+- **`403 Forbidden`**: `PermissionDeniedError` (role failure), `AccountStatusError` (status failure).
+- **`404 Not Found`**: `UserNotFoundError`, `SessionNotFoundError`, `OTPNotFoundError`, `OAuthLinkNotFoundError`.
+- **`409 Conflict`**: `EmailAlreadyExistsError`, `HandleAlreadyExistsError`, `PhoneAlreadyExistsError`, `OAuthAlreadyLinkedError`.
+- **`500 Internal Error`**: `DatabaseError`, `EmailNotConfiguredError`, `OAuthNotConfiguredError`.
+- **`502 Bad Gateway`**: `EmailSendError`.
+
+---
+
+## Configuration
+
+Configure services live or dynamically on the `auth` instance:
 
 ```python
-# Create all database tables
-auth.init()
+# JWT Configuration
+auth.jwt.config(
+    secret_key="your-jwt-secret",
+    algorithm="HS256",               # "HS256", "HS384", "HS512"
+    session_duration_days=7,
+    dual_token_mode=True,
+    access_token_expire_minutes=15,
+    refresh_token_expire_days=7,
+)
 
-# Drop all database tables (testing / teardown)
-auth.destroy()
+# SMTP Email Configuration
+auth.email.config(
+    host="smtp.resend.com",
+    port=587,
+    username="resend",
+    password="re_your_api_key",
+    sender="auth@yourdomain.com",
+    sender_name="Your App Security",
+    use_tls=True,
+)
 ```
 
 ---
 
 ## Documentation
 
-- **[API HTTP Route Reference](api_docs/ROUTES_INDEX.md)**: Comprehensive HTTP route endpoint specifications, parameters, and payloads.
-- **[Frontend Token Usage Guide](token_usage_guide.md)**: Universal guide for handling Single-Token and Dual-Token modes (Access + Refresh tokens).
-- **[OAuth Frontend Integration Guide](api_docs/oauth_integration.md)**: Frontend callback routers, token handling, and multi-provider linking.
-- **[Library SDK Reference (`usage/`)](usage/connect/connect.md)**: In-depth usage guides for each service module, dependency, and OAuth adapter.
-- **[Changelog (`changes.md`)](changes.md)**: Full record of recent architecture, error handling, and response standardizations.
+- **[Full Documentation Hub](https://auth.codesena.me/)**: Official documentation portal.
+- **[AI Documentation Manifest (`llms.txt`)](https://auth.codesena.me/llms.txt)**: Standardized LLM manifest for AI agents.
+- **[Consolidated AI Reference (`llms-full.txt`)](https://auth.codesena.me/llms-full.txt)**: High-density reference file for LLM system prompts.
+- **[HTTP REST API Reference](https://auth.codesena.me/documents/api/)** (Local: [`api_docs/ROUTES_INDEX.md`](api_docs/ROUTES_INDEX.md)): Detailed endpoint payloads and schemas.
+- **[Python SDK Reference](https://auth.codesena.me/documents/sdk/)** (Local: [`usage/connect/connect.md`](usage/connect/connect.md)): In-depth SDK service documentation.
+- **[Architecture, Models & ERD Diagrams](MODELS.md)**: Visual Mermaid ER diagrams, SQL table schemas, and relational flowcharts.
+- **[Frequently Asked Questions & Comparison](FAQ.md)**: Deep architectural comparison against FastAPI-Users, Auth0, and Supabase.
+- **[Frontend Token Guide](token_usage_guide.md)**: Production Axios client with automatic 401 token refresh queue.
+- **[Changelog](changes.md)**: Detailed version history and architectural changes.
