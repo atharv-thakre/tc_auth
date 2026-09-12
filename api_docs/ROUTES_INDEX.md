@@ -7,6 +7,7 @@ This folder documents the route modules in `tc_auth/api`.
 - [OAuth Frontend Integration Guide](oauth_integration.md)
 - [Frontend Token Usage Guide (Single & Dual Token)](token_usage_guide.md)
 - [Magic Link Architectural Guide](../magic_link.md)
+- [AI & LLM Comprehensive Documentation](../llm-docs/README.md)
 - [Profile Routes](account_route.md)
 - [Dashboard / Config Routes](dashboard_route.md)
 - [Admin Account Routes](dash_account.md)
