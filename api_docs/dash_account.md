@@ -33,7 +33,7 @@ Example:
     "phone": null,
     "avatar_url": null,
     "role": "user",
-    "status": null,
+    "status": "active",
     "created_at": "2026-08-07T12:00:00",
     "updated_at": "2026-08-07T12:00:00"
   }
