@@ -9,5 +9,4 @@ httpx
 httpx2
 email-validator
 PyJWT
-python-jose
 bcrypt
