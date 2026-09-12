@@ -14,16 +14,20 @@ from .dashboard import (
 
 from .login import (
     SendOTPRequest,
+    SendMagicLinkRequest,
+    VerifyMagicLinkRequest,
     LoginPasswordRequest,
     LoginOTPRequest,
     ForgotPasswordRequest,
     SignupPasswordRequest,
     SignupOTPRequest,
+    RefreshTokenRequest,
 )
 
 from .oauth import (
     CreateOAuth,
     DeleteOAuth,
+    LinkOAuthRequest,
 )
 
 from .otp import (
@@ -51,15 +55,19 @@ __all__ = [
 
     # login
     "SendOTPRequest",
+    "SendMagicLinkRequest",
+    "VerifyMagicLinkRequest",
     "LoginPasswordRequest",
     "LoginOTPRequest",
     "ForgotPasswordRequest",
     "SignupPasswordRequest",
     "SignupOTPRequest",
+    "RefreshTokenRequest",
 
     # oauth
     "CreateOAuth",
     "DeleteOAuth",
+    "LinkOAuthRequest",
 
     # otp
     "CreateOTP",

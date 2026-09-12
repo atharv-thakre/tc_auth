@@ -9,8 +9,37 @@ def _otp_template(
     message: str,
     otp: str,
     expiry: int,
+    magic_link: str | None = None,
 ):
     minutes = expiry // 60
+
+    magic_button_html = ""
+    if magic_link:
+        magic_button_html = f"""
+        <!-- MAGIC LINK BUTTON -->
+        <div style="text-align: center; margin: 25px 0 15px 0;">
+            <a href="{magic_link}" target="_blank" style="
+                display: inline-block;
+                padding: 14px 28px;
+                background-color: #2563eb;
+                color: #ffffff;
+                text-decoration: none;
+                border-radius: 8px;
+                font-weight: 600;
+                font-size: 15px;
+                box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+            ">
+                Click to Proceed
+            </a>
+        </div>
+        <p style="text-align: center; margin: 0 0 20px 0; font-size: 12px; color: #6b7280;">
+            Button not working? Copy and paste this link:<br>
+            <a href="{magic_link}" style="color: #2563eb; word-break: break-all;">{magic_link}</a>
+        </p>
+        <div style="text-align: center; margin: 25px 0 15px 0; font-size: 12px; color: #9ca3af; letter-spacing: 1px;">
+            — OR USE VERIFICATION CODE —
+        </div>
+        """
 
     return f"""
 <!DOCTYPE html>
@@ -59,7 +88,7 @@ def _otp_template(
                             font-size: 24px;
                             font-weight: 700;
                         ">
-                            Verification Code
+                            Verification & Authentication
                         </h1>
                     </td>
                 </tr>
@@ -77,7 +106,7 @@ def _otp_template(
                         </h2>
 
                         <p style="
-                            margin: 0 0 25px 0;
+                            margin: 0 0 20px 0;
                             color: #4b5563;
                             font-size: 15px;
                             line-height: 1.6;
@@ -85,20 +114,22 @@ def _otp_template(
                             {message}
                         </p>
 
+                        {magic_button_html}
+
                         <!-- OTP -->
                         <div style="
                             text-align: center;
-                            margin: 30px 0;
+                            margin: 20px 0;
                         ">
 
                             <div style="
                                 display: inline-block;
-                                padding: 18px 35px;
+                                padding: 16px 32px;
                                 background-color: #f3f4f6;
                                 border: 1px solid #d1d5db;
                                 border-radius: 10px;
                                 letter-spacing: 8px;
-                                font-size: 32px;
+                                font-size: 30px;
                                 font-weight: 700;
                                 color: #111827;
                             ">
@@ -113,7 +144,7 @@ def _otp_template(
                             color: #6b7280;
                             font-size: 14px;
                         ">
-                            This code expires in
+                            This code and link expire in
                             <strong>{minutes} minutes</strong>.
                         </p>
 
@@ -123,8 +154,8 @@ def _otp_template(
                             font-size: 13px;
                             line-height: 1.5;
                         ">
-                            If you did not request this code, you can safely
-                            ignore this email.
+                            If you did not request this email, you can safely
+                            ignore it.
                         </p>
 
                     </td>
@@ -167,15 +198,17 @@ def verify_email_template(
     *,
     otp: str,
     expiry: int,
+    magic_link: str | None = None,
 ):
     return _otp_template(
         title="Verify your email",
         message=(
-            "Use the verification code below to verify "
+            "Use the button or verification code below to verify "
             "your email address and continue."
         ),
         otp=otp,
         expiry=expiry,
+        magic_link=magic_link,
     )
 
 
@@ -187,15 +220,17 @@ def login_otp_template(
     *,
     otp: str,
     expiry: int,
+    magic_link: str | None = None,
 ):
     return _otp_template(
         title="Login verification",
         message=(
             "We received a request to sign in to your account. "
-            "Use the code below to complete your login."
+            "Click the button below or enter the code to complete your login."
         ),
         otp=otp,
         expiry=expiry,
+        magic_link=magic_link,
     )
 
 
@@ -207,16 +242,19 @@ def signup_otp_template(
     *,
     otp: str,
     expiry: int,
+    magic_link: str | None = None,
 ):
     return _otp_template(
         title="Complete your registration",
         message=(
-            "Use the verification code below to confirm your "
+            "Use the button or code below to confirm your "
             "email address and complete your account registration."
         ),
         otp=otp,
         expiry=expiry,
+        magic_link=magic_link,
     )
+
 
 # ==========================================================
 # RESET PASSWORD TEMPLATE
@@ -226,28 +264,29 @@ def reset_password_template(
     *,
     otp: str,
     expiry: int,
+    magic_link: str | None = None,
 ):
     return _otp_template(
         title="Reset your password",
         message=(
             "We received a request to reset your password. "
-            "Use the verification code below to set a new password."
+            "Click the button below or use the code to set a new password."
         ),
         otp=otp,
         expiry=expiry,
+        magic_link=magic_link,
     )
+
 
 # ==========================================================
 # TEMPLATES COLLECTION
 # ==========================================================
 
-
 templates = {
-    "verify": verify_email_template,
-    "verify_email": verify_email_template,
-    "login": login_otp_template,
     "signup": signup_otp_template,
+    "login": login_otp_template,
     "reset": reset_password_template,
-    "reset_password": reset_password_template,
+    "verify": verify_email_template,
 }
+
 

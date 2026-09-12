@@ -18,6 +18,7 @@ from .exceptions import (
 from .oauth import (
     GoogleOAuth,
     GitHubOAuth,
+    DiscordOAuth,
 )
 
 from .service import (
@@ -65,14 +66,15 @@ class Auth:
             session_factory=self.session_factory
         )
 
+        self.otp = OTPService(
+            session_factory=self.session_factory
+        )
+
         self.service = AuthService(
             get_user=self.get_user,
             account=self.account,
-            session=self.session
-        )
-
-        self.otp = OTPService(
-            session_factory=self.session_factory
+            session=self.session,
+            otp=self.otp,
         )
 
         self.dashboard = DashboardService(
@@ -89,6 +91,7 @@ class Auth:
 
         self.google = GoogleOAuth(oauth_service=self.oauth)
         self.github = GitHubOAuth(oauth_service=self.oauth)
+        self.discord = DiscordOAuth(oauth_service=self.oauth)
 
         # Dependencies
         self.deps = AuthDeps(
@@ -106,13 +109,18 @@ class Auth:
         # Routes
         self.oauth_routes = OAuthRoutes(
             google=self.google,
-            github=self.github
+            github=self.github,
+            discord=self.discord,
         )
 
         self.account_routes = AccountRoutes(
             session_service=self.session,
             account_service=self.account,
-            deps=self.deps
+            deps=self.deps,
+            oauth_service=self.oauth,
+            google=self.google,
+            github=self.github,
+            discord=self.discord,
         )
 
         self.auth_routes = AuthRoutes(
@@ -146,9 +154,10 @@ class Auth:
             email_service=self.email,
             github_service=self.github,
             google_service=self.google,
+            discord_service=self.discord,
             jwt_service=self.jwt,
             role_deps=self.role,
-            dashboard_service=self.dashboard
+            dashboard_service=self.dashboard,
         )
 
         if app is not None:

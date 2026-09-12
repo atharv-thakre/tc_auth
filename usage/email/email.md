@@ -325,7 +325,7 @@ send_otp(purpose="signup")
 send_verify_email()
         |
         v
-send_otp(purpose="verify_email")
+send_otp(purpose="verify")
 ```
 
 ------------------------------------------------------------------------

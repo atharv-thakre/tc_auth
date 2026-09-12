@@ -130,6 +130,48 @@ class OTPService:
         }
 
     # ==========================================================
+    # CHECK (VALIDATE WITHOUT CONSUMING)
+    # ==========================================================
+
+    def check(
+        self,
+        *,
+        identifier: str,
+        purpose: str,
+        otp: str,
+    ) -> bool:
+        if not identifier or not purpose:
+            raise OTPNotFoundError()
+
+        if not otp or not isinstance(otp, str) or not otp.strip():
+            raise OTPInvalidError()
+
+        identifier = identifier.strip()
+        purpose = purpose.strip()
+        otp = otp.strip()
+
+        with self.session_factory() as db:
+            record = self._get(
+                db,
+                identifier,
+                purpose,
+            )
+
+            if record is None:
+                raise OTPNotFoundError()
+
+            if record.expires_at < datetime.now():
+                raise OTPExpiredError()
+
+            if not verify_hash(
+                otp,
+                record.code_hash,
+            ):
+                raise OTPInvalidError()
+
+        return True
+
+    # ==========================================================
     # DELETE
     # ==========================================================
 
