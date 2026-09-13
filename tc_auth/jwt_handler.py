@@ -1,6 +1,14 @@
 import time
 import jwt
-from .exceptions.error import InvalidConfigError, InvalidTokenError
+from .exceptions.error import (
+    InvalidConfigError,
+    InvalidTokenError,
+    TokenMissingError,
+    TokenExpiredError,
+    TokenMalformedError,
+    TokenSignatureError,
+    InvalidFieldError,
+)
 
 
 SECRET_KEY = "this-is-my-super-secret-key-for-jwt-auth"
@@ -95,7 +103,7 @@ def load():
 
 def create_access_token(data: dict) -> str:
     if not isinstance(data, dict):
-        raise ValueError("Data payload for access token must be a dict")
+        raise InvalidFieldError("data", "Data payload for access token must be a dict")
 
     payload = data.copy()
     payload["type"] = "access"
@@ -120,7 +128,7 @@ def create_access_token(data: dict) -> str:
 
 def create_refresh_token(data: dict) -> str:
     if not isinstance(data, dict):
-        raise ValueError("Data payload for refresh token must be a dict")
+        raise InvalidFieldError("data", "Data payload for refresh token must be a dict")
 
     payload = data.copy()
     payload["type"] = "refresh"
@@ -138,7 +146,7 @@ def create_refresh_token(data: dict) -> str:
 
 def verify_token(token: str) -> dict:
     if not token or not isinstance(token, str):
-        raise InvalidTokenError(field="token", message="Token is missing or invalid")
+        raise TokenMissingError("Token is missing or invalid")
 
     try:
         return jwt.decode(
@@ -147,8 +155,10 @@ def verify_token(token: str) -> dict:
             algorithms=[ALGORITHM],
         )
     except jwt.ExpiredSignatureError:
-        raise InvalidTokenError(field="token", message="Token has expired")
+        raise TokenExpiredError("Token has expired")
+    except jwt.InvalidSignatureError:
+        raise TokenSignatureError("Invalid token signature")
     except jwt.PyJWTError as e:
-        raise InvalidTokenError(field="token", message=f"Invalid token: {str(e)}")
+        raise TokenMalformedError(f"Invalid token: {str(e)}")
     except Exception:
         raise InvalidTokenError(field="token", message="Invalid or expired token")

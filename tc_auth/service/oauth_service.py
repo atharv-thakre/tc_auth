@@ -7,6 +7,9 @@ from ..exceptions.error import (
     UserNotFoundError,
     OAuthAlreadyLinkedError,
     OAuthLinkNotFoundError,
+    OAuthAuthenticationError,
+    OAuthUnlinkLockoutError,
+    MissingRequiredFieldError,
     InvalidFieldError,
     DatabaseError,
 )
@@ -19,11 +22,13 @@ class OAuthService:
         session_factory,
         account,
         auth_service,
+        cookie_service=None,
     ):
         self.get_user = get_user
         self.session_factory = session_factory
         self.account = account
         self.auth_service = auth_service
+        self.cookie_service = cookie_service
 
     # ==========================================================
     # LOGIN
@@ -39,12 +44,13 @@ class OAuthService:
         avatar_url: str | None = None,
         ip_address: str | None = None,
         user_agent: str | None = None,
+        response=None,
     ):
         norm_provider = str(provider).strip().lower() if provider else ""
         norm_uid = str(provider_user_id).strip() if provider_user_id else ""
 
         if not norm_provider or not norm_uid:
-            raise AuthError("Provider and provider_user_id are required for OAuth login")
+            raise MissingRequiredFieldError("provider/provider_user_id", "Provider and provider_user_id are required for OAuth login")
 
         clean_name = name.strip() if name and isinstance(name, str) and name.strip() else None
         clean_email = email.strip() if email and isinstance(email, str) and email.strip() else None
@@ -84,12 +90,13 @@ class OAuthService:
             )
 
         if not account:
-            raise AuthError("Unable to retrieve or create account for OAuth login")
+            raise OAuthAuthenticationError("Unable to retrieve or create account for OAuth login")
 
         result = self.auth_service.create_login_response(
             account=account,
             ip_address=ip_address,
             user_agent=user_agent,
+            response=response,
         )
 
         return result
@@ -231,7 +238,7 @@ class OAuthService:
         norm_uid = str(provider_user_id).strip()
 
         if not norm_provider or not norm_uid:
-            raise AuthError("Provider and provider_user_id are required")
+            raise MissingRequiredFieldError("provider/provider_user_id", "Provider and provider_user_id are required")
 
         with self.session_factory() as db:
             account = db.query(Account).filter_by(id=account_id).first()
@@ -321,7 +328,7 @@ class OAuthService:
                 has_password = bool(account.password_hash and str(account.password_hash).strip())
                 other_links = [l for l in links if l.provider.lower() != norm_provider]
                 if not has_password and len(other_links) == 0:
-                    raise AuthError(
+                    raise OAuthUnlinkLockoutError(
                         "Cannot unlink provider: account must have a password or at least one other active authentication method"
                     )
 

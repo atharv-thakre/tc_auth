@@ -9,6 +9,8 @@ from ..exceptions.error import (
     OTPExpiredError,
     OTPInvalidError,
     OTPNotFoundError,
+    MissingRequiredFieldError,
+    OTPValidationError,
 )
 
 
@@ -29,16 +31,16 @@ class OTPService:
         length: int = 6,
     ):
         if not identifier or not isinstance(identifier, str) or not identifier.strip():
-            raise AuthError("OTP identifier is required")
+            raise MissingRequiredFieldError("identifier", "OTP identifier is required")
 
         if not purpose or not isinstance(purpose, str) or not purpose.strip():
-            raise AuthError("OTP purpose is required")
+            raise MissingRequiredFieldError("purpose", "OTP purpose is required")
 
         if expiry < 1:
-            raise AuthError("OTP expiry must be at least 1 second")
+            raise OTPValidationError("OTP expiry must be at least 1 second")
 
         if length < 1 or length > 12:
-            raise AuthError("OTP length must be between 1 and 12")
+            raise OTPValidationError("OTP length must be between 1 and 12")
 
         identifier = identifier.strip()
         purpose = purpose.strip()
@@ -182,10 +184,10 @@ class OTPService:
         purpose: str,
     ):
         if not identifier or not isinstance(identifier, str) or not identifier.strip():
-            raise AuthError("OTP identifier is required")
+            raise MissingRequiredFieldError("identifier", "OTP identifier is required")
 
         if not purpose or not isinstance(purpose, str) or not purpose.strip():
-            raise AuthError("OTP purpose is required")
+            raise MissingRequiredFieldError("purpose", "OTP purpose is required")
 
         identifier = identifier.strip()
         purpose = purpose.strip()

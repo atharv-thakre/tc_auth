@@ -68,4 +68,4 @@ class SignupOTPRequest(BaseModel):
 
 
 class RefreshTokenRequest(BaseModel):
-    refresh_token: str = Field(min_length=1)
+    refresh_token: str | None = None

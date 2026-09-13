@@ -58,5 +58,19 @@ class Config:
     DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
     DISCORD_REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI")
 
+    # ======================================================
+    # COOKIE
+    # ======================================================
+
+    COOKIE_MODE = os.getenv("COOKIE_MODE", "false").lower() == "true"
+    COOKIE_ACCESS_NAME = os.getenv("COOKIE_ACCESS_NAME", "access_token")
+    COOKIE_REFRESH_NAME = os.getenv("COOKIE_REFRESH_NAME", "refresh_token")
+    COOKIE_PATH = os.getenv("COOKIE_PATH", "/")
+    COOKIE_DOMAIN = os.getenv("COOKIE_DOMAIN")
+    COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() == "true"
+    COOKIE_HTTPONLY = os.getenv("COOKIE_HTTPONLY", "true").lower() == "true"
+    COOKIE_SAMESITE = os.getenv("COOKIE_SAMESITE", "lax")
+    COOKIE_MAX_AGE = int(os.getenv("COOKIE_MAX_AGE")) if os.getenv("COOKIE_MAX_AGE") else None
+
 
 config = Config()

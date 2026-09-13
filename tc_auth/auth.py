@@ -3,6 +3,7 @@ from sqlalchemy import Engine
 
 from starlette.middleware.sessions import SessionMiddleware
 from . import jwt_handler
+from .cookie import CookieService
 
 from .db import (
     Base,
@@ -54,6 +55,9 @@ class Auth:
         self.engine = engine
         self.session_factory = create_session_factory(engine)
 
+        # Cookie
+        self.cookie = CookieService()
+
         # Services
         self.get_user = GetUserService(
             session_factory=self.session_factory
@@ -75,6 +79,7 @@ class Auth:
             account=self.account,
             session=self.session,
             otp=self.otp,
+            cookie_service=self.cookie,
         )
 
         self.dashboard = DashboardService(
@@ -86,17 +91,19 @@ class Auth:
             get_user=self.get_user,
             session_factory=self.session_factory,
             account=self.account,
-            auth_service=self.service
+            auth_service=self.service,
+            cookie_service=self.cookie,
         )
 
-        self.google = GoogleOAuth(oauth_service=self.oauth)
-        self.github = GitHubOAuth(oauth_service=self.oauth)
-        self.discord = DiscordOAuth(oauth_service=self.oauth)
+        self.google = GoogleOAuth(oauth_service=self.oauth, cookie_service=self.cookie)
+        self.github = GitHubOAuth(oauth_service=self.oauth, cookie_service=self.cookie)
+        self.discord = DiscordOAuth(oauth_service=self.oauth, cookie_service=self.cookie)
 
         # Dependencies
         self.deps = AuthDeps(
             get_user=self.get_user,
-            session=self.session
+            session=self.session,
+            cookie_service=self.cookie,
         )
 
         self.role = RoleDeps(auth_deps=self.deps)
@@ -121,13 +128,15 @@ class Auth:
             google=self.google,
             github=self.github,
             discord=self.discord,
+            cookie_service=self.cookie,
         )
 
         self.auth_routes = AuthRoutes(
             email_service=self.email,
             auth_service=self.service,
             otp_service=self.otp,
-            get_user=self.get_user
+            get_user=self.get_user,
+            cookie_service=self.cookie,
         )
 
         self.dash_otp_routes = DashOTPRoutes(
@@ -158,6 +167,7 @@ class Auth:
             jwt_service=self.jwt,
             role_deps=self.role,
             dashboard_service=self.dashboard,
+            cookie_service=self.cookie,
         )
 
         if app is not None:

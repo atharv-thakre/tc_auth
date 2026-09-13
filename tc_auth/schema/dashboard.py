@@ -30,4 +30,18 @@ class JWTConfig(BaseModel):
     session_duration_days: int = Field(ge=1)
     dual_token_mode: bool = False
     access_token_expire_minutes: int | None = Field(default=None, ge=1)
-    refresh_token_expire_days: int | None = Field(default=None, ge=1)
+    refresh_token_expire_days: int | None = Field(default=None, ge=1)
+
+
+class CookieConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    cookie_mode: bool = False
+    access_cookie_name: str = "access_token"
+    refresh_cookie_name: str = "refresh_token"
+    path: str = "/"
+    domain: str | None = None
+    secure: bool = False
+    httponly: bool = True
+    samesite: str = "lax"
+    max_age: int | None = None

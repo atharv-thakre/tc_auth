@@ -12,6 +12,7 @@ from ..exceptions.error import (
     UserNotFoundError,
     InvalidFieldError,
     DatabaseError,
+    DatabaseIntegrityError,
 )
 
 
@@ -90,7 +91,7 @@ class AccountService:
         ):
             raise PhoneAlreadyExistsError()
 
-        raise DatabaseError(f"Database integrity error: {message}")
+        raise DatabaseIntegrityError(f"Database integrity error: {message}")
 
     # =============================Public Methods===========================
     # CREATE USER

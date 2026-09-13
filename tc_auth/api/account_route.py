@@ -1,6 +1,11 @@
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 from ..schema import UpdatePassword, UpdateSchema, LinkOAuthRequest
-from ..exceptions.error import AuthError, OAuthNotConfiguredError
+from ..exceptions.error import (
+    AuthError,
+    OAuthNotConfiguredError,
+    UnsupportedOAuthProviderError,
+    MissingRequiredFieldError,
+)
 
 
 class AccountRoutes:
@@ -13,6 +18,7 @@ class AccountRoutes:
         google=None,
         github=None,
         discord=None,
+        cookie_service=None,
     ):
         self.session_service = session_service
         self.account_service = account_service
@@ -21,6 +27,7 @@ class AccountRoutes:
         self.google = google
         self.github = github
         self.discord = discord
+        self.cookie_service = cookie_service
 
         self.router = APIRouter(tags=["Profile Routes"])
         self.register()
@@ -29,12 +36,18 @@ class AccountRoutes:
         current = Depends(self.deps.get_current_user)
 
         @self.router.post("/logout")
-        def logout(user=current):
-            return self.session_service.destroy_session(user["session"]["id"])
+        def logout(response: Response, user=current):
+            result = self.session_service.destroy_session(user["session"]["id"])
+            if self.cookie_service and self.cookie_service.is_cookie_mode():
+                self.cookie_service.clear_auth_cookies(response)
+            return result
 
         @self.router.post("/logout-all")
-        def logout_all(user=current):
-            return self.session_service.destroy_all(user["account"]["id"])
+        def logout_all(response: Response, user=current):
+            result = self.session_service.destroy_all(user["account"]["id"])
+            if self.cookie_service and self.cookie_service.is_cookie_mode():
+                self.cookie_service.clear_auth_cookies(response)
+            return result
 
         @self.router.get("/me")
         def me(user=current):
@@ -64,13 +77,13 @@ class AccountRoutes:
         ):
             normalized_provider = provider.strip().lower()
             if normalized_provider not in ("google", "github", "discord"):
-                raise AuthError(f"Unsupported OAuth provider: '{provider}'")
+                raise UnsupportedOAuthProviderError(provider)
 
             account_id = user["account"]["id"]
 
             if body and body.provider_user_id:
                 if not self.oauth_service:
-                    raise AuthError("OAuth service is not available")
+                    raise OAuthNotConfiguredError("OAuth", "OAuth service is not available")
                 return self.oauth_service.link_account(
                     account_id=account_id,
                     provider=normalized_provider,
@@ -79,7 +92,7 @@ class AccountRoutes:
 
             resolved_frontend_url = frontend_url or (body.frontend_url if body else None)
             if not resolved_frontend_url:
-                raise AuthError("frontend_url parameter or provider_user_id body is required")
+                raise MissingRequiredFieldError("frontend_url/provider_user_id", "frontend_url parameter or provider_user_id body is required")
 
             request.session["link_account_id"] = account_id
 
@@ -123,7 +136,7 @@ class AccountRoutes:
         ):
             normalized_provider = provider.strip().lower()
             if not self.oauth_service:
-                raise AuthError("OAuth service is not available")
+                raise OAuthNotConfiguredError("OAuth", "OAuth service is not available")
             return self.oauth_service.unlink_account(
                 account_id=user["account"]["id"],
                 provider=normalized_provider,

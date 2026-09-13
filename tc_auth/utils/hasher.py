@@ -2,12 +2,15 @@ import bcrypt
 import hashlib
 
 
+from ..exceptions.error import InvalidFieldError
+
+
 def hash_password(password: str) -> str:
     """
     Hash a password using bcrypt.
     """
     if not password or not isinstance(password, str):
-        raise ValueError("Password must be a non-empty string")
+        raise InvalidFieldError("password", "Password must be a non-empty string")
 
     return bcrypt.hashpw(
         password.encode(),

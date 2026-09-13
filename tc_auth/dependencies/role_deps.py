@@ -1,6 +1,10 @@
 from fastapi import Depends
 
-from ..exceptions.error import PermissionDeniedError
+from ..exceptions.error import (
+    PermissionDeniedError,
+    RoleMismatchError,
+    RoleBlockedError,
+)
 
 
 class RoleDeps:
@@ -21,10 +25,9 @@ class RoleDeps:
             user_role = user.get("role")
 
             if user_role != role:
-                raise PermissionDeniedError(
+                raise RoleMismatchError(
                     current=user_role,
                     required=role,
-                    field="role",
                 )
 
             return user
@@ -45,10 +48,9 @@ class RoleDeps:
             user_role = user.get("role")
 
             if user_role not in roles:
-                raise PermissionDeniedError(
+                raise RoleMismatchError(
                     current=user_role,
                     required=roles,
-                    field="role",
                 )
 
             return user
@@ -69,9 +71,8 @@ class RoleDeps:
             user_role = user.get("role")
 
             if user_role in roles:
-                raise PermissionDeniedError(
-                    current=user_role,
-                    field="role",
+                raise RoleBlockedError(
+                    role=user_role,
                     message=f"Role '{user_role}' is blocked",
                 )
 

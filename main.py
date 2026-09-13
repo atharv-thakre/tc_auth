@@ -30,39 +30,51 @@ auth.jwt.config(
     refresh_token_expire_days=config.JWT_REFRESH_TOKEN_EXPIRE_DAYS,
 )
 
-
-# auth.email.config(
-#     host=config.EMAIL_HOST,
-#     port=config.EMAIL_PORT,
-#     username=config.EMAIL_USERNAME,
-#     password=config.EMAIL_PASSWORD,
-#     sender=config.EMAIL_SENDER,
-#     use_tls=config.EMAIL_USE_TLS,
-# )
-
-
-# if config.GOOGLE_CLIENT_ID and config.GOOGLE_CLIENT_SECRET:
-#     auth.google.config(
-#         client_id=config.GOOGLE_CLIENT_ID,
-#         client_secret=config.GOOGLE_CLIENT_SECRET,
-#         redirect_uri=config.GOOGLE_REDIRECT_URI,
-#     )
+auth.cookie.config(
+    cookie_mode=config.COOKIE_MODE,
+    access_cookie_name=config.COOKIE_ACCESS_NAME,
+    refresh_cookie_name=config.COOKIE_REFRESH_NAME,
+    path=config.COOKIE_PATH,
+    domain=config.COOKIE_DOMAIN,
+    secure=config.COOKIE_SECURE,
+    httponly=config.COOKIE_HTTPONLY,
+    samesite=config.COOKIE_SAMESITE,
+    max_age=config.COOKIE_MAX_AGE,
+)
 
 
-# if config.GITHUB_CLIENT_ID and config.GITHUB_CLIENT_SECRET:
-#     auth.github.config(
-#         client_id=config.GITHUB_CLIENT_ID,
-#         client_secret=config.GITHUB_CLIENT_SECRET,
-#         redirect_uri=config.GITHUB_REDIRECT_URI,
-#     )
+auth.email.config(
+    host=config.EMAIL_HOST,
+    port=config.EMAIL_PORT,
+    username=config.EMAIL_USERNAME,
+    password=config.EMAIL_PASSWORD,
+    sender=config.EMAIL_SENDER,
+    use_tls=config.EMAIL_USE_TLS,
+)
 
 
-# if config.DISCORD_CLIENT_ID and config.DISCORD_CLIENT_SECRET:
-#     auth.discord.config(
-#         client_id=config.DISCORD_CLIENT_ID,
-#         client_secret=config.DISCORD_CLIENT_SECRET,
-#         redirect_uri=config.DISCORD_REDIRECT_URI,
-#     )
+if config.GOOGLE_CLIENT_ID and config.GOOGLE_CLIENT_SECRET:
+    auth.google.config(
+        client_id=config.GOOGLE_CLIENT_ID,
+        client_secret=config.GOOGLE_CLIENT_SECRET,
+        redirect_uri=config.GOOGLE_REDIRECT_URI,
+    )
+
+
+if config.GITHUB_CLIENT_ID and config.GITHUB_CLIENT_SECRET:
+    auth.github.config(
+        client_id=config.GITHUB_CLIENT_ID,
+        client_secret=config.GITHUB_CLIENT_SECRET,
+        redirect_uri=config.GITHUB_REDIRECT_URI,
+    )
+
+
+if config.DISCORD_CLIENT_ID and config.DISCORD_CLIENT_SECRET:
+    auth.discord.config(
+        client_id=config.DISCORD_CLIENT_ID,
+        client_secret=config.DISCORD_CLIENT_SECRET,
+        redirect_uri=config.DISCORD_REDIRECT_URI,
+    )
 
 
 def run():

@@ -7,12 +7,14 @@ from ..exceptions.error import (
     InvalidConfigError,
     OAuthCallbackError,
     OAuthNotConfiguredError,
+    MissingRequiredFieldError,
 )
 
 
 class DiscordOAuth:
-    def __init__(self, oauth_service):
+    def __init__(self, oauth_service, cookie_service=None):
         self.oauth_service = oauth_service
+        self.cookie_service = cookie_service
         self.client = None
         self.redirect_uri = None
         self.client_id = None
@@ -82,7 +84,7 @@ class DiscordOAuth:
             raise OAuthNotConfiguredError("Discord")
 
         if not frontend_url or not isinstance(frontend_url, str):
-            raise AuthError("frontend_url parameter is required")
+            raise MissingRequiredFieldError("frontend_url", "frontend_url parameter is required")
 
         request.session["frontend_url"] = frontend_url.strip()
         return await self.client.authorize_redirect(
@@ -206,6 +208,14 @@ class DiscordOAuth:
         if result.get("refresh_token"):
             redirect_params += f"&refresh_token={result['refresh_token']}"
 
-        return RedirectResponse(
+        response = RedirectResponse(
             f"{callback_url}?{redirect_params}"
         )
+        if self.cookie_service and self.cookie_service.is_cookie_mode():
+            self.cookie_service.set_auth_cookies(
+                response=response,
+                access_token=result["access_token"],
+                refresh_token=result.get("refresh_token"),
+            )
+
+        return response

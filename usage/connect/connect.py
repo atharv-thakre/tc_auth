@@ -49,6 +49,7 @@ engine = create_engine(
 #     auth.status      -> StatusDeps (require, allow, block)
 #     auth.email       -> EmailService
 #     auth.jwt         -> jwt_handler
+#     auth.cookie      -> CookieService
 #     auth.google      -> GoogleOAuth
 #     auth.github      -> GitHubOAuth
 #     auth.discord     -> DiscordOAuth
@@ -122,7 +123,24 @@ auth.discord.config(
 
 
 # ==========================================================
-# 8. TABLE CREATION / TEARDOWN HELPERS
+# 8. COOKIE CONFIGURATION (OPTIONAL)
+# ==========================================================
+#
+# tc-auth defaults to localStorage mode (cookie_mode=False).
+# Call auth.cookie.config() to enable cookie mode or customize settings.
+#
+auth.cookie.config(
+    cookie_mode=False,
+    access_cookie_name="access_token",
+    refresh_cookie_name="refresh_token",
+    secure=False,
+    httponly=True,
+    samesite="lax",
+)
+
+
+# ==========================================================
+# 9. TABLE CREATION / TEARDOWN HELPERS
 # ==========================================================
 #
 # auth.init()     # Creates all database tables

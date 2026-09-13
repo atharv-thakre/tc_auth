@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from fastapi import Response
 from .. import jwt_handler
 from ..jwt_handler import create_access_token, create_refresh_token, verify_token
 from ..utils.hasher import verify_password, verify_hash
@@ -11,6 +12,9 @@ from ..exceptions.error import (
     InvalidCredentialsError,
     UserNotFoundError,
     InvalidTokenError,
+    InvalidFieldError,
+    MissingRequiredFieldError,
+    SessionExpiredError,
 )
 
 
@@ -21,11 +25,13 @@ class AuthService:
         account,
         session,
         otp=None,
+        cookie_service=None,
     ):
         self.get_user = get_user
         self.account = account
         self.session = session
         self.otp = otp
+        self.cookie_service = cookie_service
 
     def _authenticate(
         self,
@@ -74,9 +80,10 @@ class AuthService:
         account: dict,
         ip_address: str | None = None,
         user_agent: str | None = None,
+        response: Response | None = None,
     ):
         if not account or not isinstance(account, dict) or "id" not in account:
-            raise AuthError("Invalid account data for login response")
+            raise InvalidFieldError("account", "Invalid account data for login response")
 
         session = self.session.create_session(
             account_id=account["id"],
@@ -92,20 +99,33 @@ class AuthService:
 
         access_token = create_access_token(token_payload)
 
-        response = {
+        res_data = {
             "access_token": access_token,
             "token_type": "Bearer",
             "account": account,
         }
 
         if jwt_handler.is_dual_token_mode():
-            response["refresh_token"] = create_refresh_token(token_payload)
+            res_data["refresh_token"] = create_refresh_token(token_payload)
 
-        return response
+        if response is not None and self.cookie_service and self.cookie_service.is_cookie_mode():
+            self.cookie_service.set_auth_cookies(
+                response=response,
+                access_token=access_token,
+                refresh_token=res_data.get("refresh_token"),
+            )
+            return {
+                "token_type": "Cookie",
+                "account": account,
+                "cookie": self.cookie_service.get_cookie_info(),
+            }
+
+        return res_data
 
     def refresh_tokens(
         self,
         refresh_token: str,
+        response: Response | None = None,
     ):
         if not refresh_token or not isinstance(refresh_token, str) or not refresh_token.strip():
             raise InvalidTokenError(field="refresh_token", message="Missing refresh token")
@@ -148,7 +168,7 @@ class AuthService:
 
         now = datetime.now(UTC) if expires_at.tzinfo is not None else datetime.now()
         if expires_at < now:
-            raise InvalidTokenError(field="session", message="Session has expired")
+            raise SessionExpiredError("Session has expired")
 
         token_hash = session.get("token_hash")
         if not token_hash or not verify_hash(token_secret, token_hash):
@@ -171,11 +191,26 @@ class AuthService:
         new_access_token = create_access_token(token_payload)
         new_refresh_token = create_refresh_token(token_payload)
 
-        return {
+        res_data = {
             "access_token": new_access_token,
             "refresh_token": new_refresh_token,
             "token_type": "Bearer",
         }
+
+        if response is not None and self.cookie_service and self.cookie_service.is_cookie_mode():
+            self.cookie_service.set_auth_cookies(
+                response=response,
+                access_token=new_access_token,
+                refresh_token=new_refresh_token,
+            )
+            return {
+                "success": True,
+                "message": "Tokens refreshed successfully",
+                "token_type": "Cookie",
+                "cookie": self.cookie_service.get_cookie_info(),
+            }
+
+        return res_data
 
     def signup(
         self,
@@ -188,9 +223,10 @@ class AuthService:
         status: str | None = None,
         ip_address: str | None = None,
         user_agent: str | None = None,
+        response: Response | None = None,
     ):
         if not email or not password:
-            raise AuthError("Email and password are required")
+            raise MissingRequiredFieldError("email/password", "Email and password are required")
 
         account = self.account.create_user(
             name=name,
@@ -206,6 +242,7 @@ class AuthService:
             account,
             ip_address,
             user_agent,
+            response=response,
         )
 
     def login(
@@ -214,6 +251,7 @@ class AuthService:
         password: str,
         ip_address: str | None = None,
         user_agent: str | None = None,
+        response: Response | None = None,
     ):
         account = self._authenticate(
             identifier,
@@ -224,6 +262,7 @@ class AuthService:
             account,
             ip_address,
             user_agent,
+            response=response,
         )
 
     def update_password(
@@ -242,6 +281,7 @@ class AuthService:
         otp: str,
         ip_address: str | None = None,
         user_agent: str | None = None,
+        response: Response | None = None,
     ):
         if self.otp:
             self.otp.verify(
@@ -255,6 +295,7 @@ class AuthService:
             account=account,
             ip_address=ip_address,
             user_agent=user_agent,
+            response=response,
         )
 
     def verify_email_magic_link(

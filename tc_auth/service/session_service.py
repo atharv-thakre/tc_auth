@@ -147,6 +147,7 @@ class SessionService:
                 db.rollback()
                 raise DatabaseError(f"Failed to destroy all sessions: {str(e)}")
 
+
     def cleanup_expired(self):
         with self.session_factory() as db:
             try:

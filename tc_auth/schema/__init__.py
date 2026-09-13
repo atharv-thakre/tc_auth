@@ -10,6 +10,7 @@ from .dashboard import (
     OAuthConfig,
     EmailConfig,
     JWTConfig,
+    CookieConfig,
 )
 
 from .login import (
@@ -52,6 +53,7 @@ __all__ = [
     "OAuthConfig",
     "EmailConfig",
     "JWTConfig",
+    "CookieConfig",
 
     # login
     "SendOTPRequest",

@@ -1,888 +1,601 @@
-# TC Auth — Complete API, Usage & Response Changelog
+# TC Auth — Complete Changelog & Frontend Integration Guide
 
-This document tracks all new and updated APIs, request payloads, response structures, query parameters, status codes, and usage patterns across `tc_auth`.
-
-All endpoints are mounted under the base prefix `/tc-auth` by default (configurable via `auth.include_routes(app, prefix="/tc-auth")`).
+This document tracks all new features, routes, architectural updates, frontend integration instructions, and documentation changes across `tc_auth`.
 
 ---
 
-## Table of Contents
+# Section 1: Features, Routes & Frontend Instructions
 
-1. [Security & Authentication Architecture](#1-security--authentication-architecture)
-   - [Dual-Token Architecture (Access + Refresh)](#11-dual-token-architecture-access--refresh)
-   - [Password Policy & Strength Enforcement](#12-password-policy--strength-enforcement)
-   - [Email OTP Purpose Restriction](#13-email-otp-purpose-restriction)
-   - [Magic Link System (Built on Email OTP)](#14-magic-link-system-built-on-email-otp)
-2. [OAuth Architecture & Enhancements](#2-oauth-architecture--enhancements)
-   - [Discord OAuth Provider](#21-discord-oauth-provider)
-   - [Multi-Provider Account Linking](#22-multi-provider-account-linking)
-   - [Safe OAuth Unlinking & Lockout Prevention](#23-safe-oauth-unlinking--lockout-prevention)
-   - [Profile & Email Overwrite Policy](#24-profile--email-overwrite-policy)
-   - [Direct Account Linking on OAuth Login / Signup](#25-direct-account-linking-on-oauth-login--signup)
-3. [Complete API Endpoints & Request/Response Reference](#3-complete-api-endpoints--requestresponse-reference)
-   - [3.1 Authentication & Registration](#31-authentication--registration)
-   - [3.2 Profile, Session & User OAuth Linking](#32-profile-session--user-oauth-linking)
-   - [3.3 OAuth Browser Login & Callback Routes](#33-oauth-browser-login--callback-routes)
-   - [3.4 System, Health & Dashboard Configuration](#34-system-health--dashboard-configuration)
-   - [3.5 Admin Resource Management (Superadmin Only)](#35-admin-resource-management-superadmin-only)
-4. [FastAPI Dependencies & Auth Context](#4-fastapi-dependencies--auth-context)
-5. [Standard Error Format & Status Code Reference](#5-standard-error-format--status-code-reference)
+## 1.1 Overview: Cookie Mode vs localStorage Mode
+
+`tc_auth` now supports a unified **Cookie Configuration Subsystem** (`auth.cookie`), allowing application backends to toggle between **localStorage mode** and **Cookie mode**.
+
+* **Default Mode**: `cookie_mode = False` (`localStorage` mode).
+  * 100% backwards compatible with existing frontend and SDK implementations.
+  * No cookies are set; tokens are returned in JSON response bodies and OAuth redirect query parameters.
+  * Authenticated requests use `Authorization: Bearer <access_token>`.
+* **Cookie Mode**: `cookie_mode = True`.
+  * The backend sets secure, `HttpOnly` session cookies on HTTP responses (`access_token`, and `refresh_token` if dual token mode is active).
+  * Client browsers automatically send cookies on subsequent requests.
+  * Protected routes accept either the `Authorization: Bearer <token>` header or the `access_token` cookie.
+  * **Zero Breaking Changes**:
+    * Direct SDK methods (`auth.service.create_login_response`, `auth.oauth.login`) continue returning their standard dictionary payloads.
+    * OAuth redirects still preserve `?access_token=...&refresh_token=...` in the redirect URL so existing frontend callback parsers never fail.
 
 ---
 
-## 1. Security & Authentication Architecture
+## 1.2 Frontend Guide: Handling Both Modes (Dual-Mode & Single-Mode Architecture)
 
-### 1.1 Dual-Token Architecture (Access + Refresh)
+Frontend developers can easily build applications that support **both localStorage mode and Cookie mode simultaneously**, or support either mode exclusively.
 
-By default, `tc_auth` operates in **Single-Token Mode** for backwards compatibility (`SESSION_DURATION_DAYS = 7`). 
+### Mode Comparison for Frontend Developers
 
-When **Dual-Token Mode** is enabled via `auth.jwt.config(..., dual_token_mode=True)` or `POST /tc-auth/config/jwt`:
-- **Access Token**: Short-lived JWT (default `15` minutes) embedded with claim `"type": "access"`.
-- **Refresh Token**: Long-lived JWT (default `7` days) embedded with claim `"type": "refresh"`.
-- **Token Rotation**: The `POST /tc-auth/token/refresh` endpoint accepts a valid refresh token, checks it against active database sessions, and issues a new access token along with a rotated refresh token.
-- **Refresh Token Abuse Prevention**: Attempting to use a refresh token in `Authorization: Bearer <token>` on protected routes is rejected with **HTTP 401 Unauthorized** (`"Refresh token cannot be used as an access token"`).
-
-### 1.2 Password Policy & Strength Enforcement
-
-All password creation and update flows enforce a strict 4-point password complexity rule:
-1. **Minimum Length**: At least 6 characters.
-2. **Uppercase Character**: At least 1 uppercase letter (`A-Z`).
-3. **Lowercase Character**: At least 1 lowercase letter (`a-z`).
-4. **Number**: At least 1 digit (`0-9`).
-
-**Enforced On**:
-- `POST /tc-auth/signup/password` (`SignupPasswordRequest`)
-- `POST /tc-auth/signup/otp` (`SignupOTPRequest`)
-- `POST /tc-auth/forgot/password` (`ForgotPasswordRequest`)
-- `PUT /tc-auth/update/password` (`UpdatePassword`)
-- Admin user creation & super-updates (`POST /tc-auth/account/`, `PATCH /tc-auth/account/`)
-- SDK Service calls: `auth.account.create_user()` and `auth.account.update_password()`
-
-Failing validation raises `WeakPasswordError` (**HTTP 400 Bad Request**):
-```json
-{
-  "success": false,
-  "message": "Password must be at least 6 characters long and contain at least one uppercase letter, one lowercase letter, and one number"
-}
-```
-
-### 1.3 Email OTP Purpose Restriction
-
-The email OTP service strictly enforces 4 allowed purposes:
-- `signup`: User registration
-- `login`: Passwordless OTP login
-- `reset`: Password reset verification
-- `verify`: Email address ownership verification
-
-Any unapproved purpose is rejected with **HTTP 400 Bad Request** (`InvalidEmailPurposeError`).
-
-### 1.4 Magic Link System (Built on Email OTP)
-
-The Magic Link system is implemented directly on top of `tc_auth`'s existing email OTP infrastructure, eliminating redundant database models while maintaining single-use token lifecycle, expiry, and attempt limits.
-
-- **Explicit Intent Guideline**:
-  - `POST /tc-auth/send/email/link/{purpose}`: Recommended **ONLY when the user explicitly clicks a "Send me Magic Link" / "Sign in with Magic Link" button**. Sets dedicated subject line (*"Sign-In Link & Code"*).
-  - `POST /tc-auth/send/email/otp/{purpose}`: Used for default email sign-in forms. Automatically includes the magic link button if `frontend_url` is provided in body, query param, or detected via the `Origin` header.
-- **Dual Authentication Email Content**: Every magic link email contains both:
-  1. A one-click CTA button ("Click to Proceed") that performs direct authentication.
-  2. A fallback manual 6-digit verification code below the button (for cross-device access).
-- **Single-Token & Dual-Token Mode Support**:
-  - Single-Token Mode: `GET /link/login` redirects to `{frontend_url}/oauth/callback?access_token=...`; `POST /link/login` returns `{access_token, account}`.
-  - Dual-Token Mode: `GET /link/login` redirects to `{frontend_url}/oauth/callback?access_token=...&refresh_token=...`; `POST /link/login` returns `{access_token, refresh_token, account}`.
-- **Direct Browser Verification (`GET /tc-auth/link/{purpose}`)**:
-  - `login`: Verifies OTP, logs user in, and redirects (HTTP 307) to `{frontend_url}/oauth/callback?access_token=...(&refresh_token=...)`, reusing the frontend OAuth callback handler.
-  - `verify`: Verifies OTP, sets user status to `"active"`, and redirects (HTTP 307) to `{frontend_url}/magic-link/callback?verified=true&email=...`.
-  - `reset`: Validates OTP without consuming, redirects to `{frontend_url}/reset-password?email=...&otp=...`.
-  - `signup`: Validates OTP without consuming, redirects to `{frontend_url}/signup?email=...&otp=...&verified=true`.
-  - On error (expired or invalid OTP): Redirects (HTTP 307) to `{frontend_url}/magic-link/callback?error={error_message}`.
-- **Bot-Safe Programmatic Verification (`POST /tc-auth/link/{purpose}`)**:
-  Accepts `{"email": "...", "otp": "..."}` and returns standard JSON payloads (tokens & user profile for `login`, success object for `verify`). This protects against corporate email antivirus scanner bots that pre-fetch and burn links.
-
----
-
-## 2. OAuth Architecture & Enhancements
-
-### 2.1 Discord OAuth Provider
-
-`tc_auth` includes Discord as a first-class OAuth 2.0 provider (`auth.discord`, `GET /tc-auth/discord/login`, `GET /tc-auth/discord/callback`, `POST /tc-auth/config/discord`).
-
-- **Scopes**: `identify email`
-- **User Data Mapping**:
-  - `id` $\rightarrow$ `provider_user_id` (string)
-  - `global_name` or `username` $\rightarrow$ `name`
-  - `email` $\rightarrow$ `email` (only trusted if verified)
-  - `avatar` $\rightarrow$ `avatar_url` (supports animated `.gif` via `a_` prefix, standard `.png`, and default embed CDN avatars `(id >> 22) % 6`).
-- **Account Takeover Protection**: Discord permits unverified emails. To protect existing users from unauthorized takeover, Discord accounts with `verified: False` have their email ignored for automatic linking.
-
-### 2.2 Multi-Provider Account Linking
-
-Logged-in users can link secondary OAuth providers (Google, GitHub, Discord) to their single profile:
-- **Redirect Mode**: Pass `?frontend_url=...` to `POST /tc-auth/account/oauth/link/{provider}`. Redirects to provider authorization; upon callback, links provider to the current account and redirects back to `{frontend_url}/oauth/callback?linked=true&provider={provider}`.
-- **Direct Mode**: Send JSON `{"provider_user_id": "..."}` to `POST /tc-auth/account/oauth/link/{provider}`.
-- **Inspect Links**: `GET /tc-auth/account/oauth/links`.
-
-### 2.3 Safe OAuth Unlinking & Lockout Prevention
-
-- **Endpoint**: `DELETE /tc-auth/account/oauth/{provider}`
-- **Lockout Prevention**: Unlinking is safely rejected (**HTTP 400 Bad Request**) if the user does not have a password (`password_hash`) and has no other linked OAuth providers:
-```json
-{
-  "success": false,
-  "message": "Cannot unlink provider: account must have a password or at least one other active authentication method"
-}
-```
-
-### 2.4 Profile & Email Overwrite Policy
-
-| Provider | Overwrites Existing Non-Empty Email? | Overwrites Existing Name / Avatar? | Sets Empty / Missing Fields? | Auto-Links by Verified Email? |
-| :--- | :--- | :--- | :--- | :--- |
-| **Google** | **YES** (always set or updated) | **NO** (preserved if already present) | **YES** (sets all empty fields) | **YES** (case-insensitive) |
-| **GitHub** | **NO** (preserved if already present) | **NO** (preserved if already present) | **YES** (sets all empty fields) | **YES** (case-insensitive primary verified) |
-| **Discord** | **NO** (preserved if already present) | **NO** (preserved if already present) | **YES** (sets all empty fields) | **YES** (case-insensitive verified only) |
-
-### 2.5 Direct Account Linking on OAuth Login / Signup
-
-- **Case-Insensitive Matching**: `USER@EXAMPLE.COM` matches `user@example.com`.
-- **Idempotency**: Repeated logins with an already-linked provider succeed gracefully without duplicate key errors.
-- **Conflict Detection**:
-  - Account already linked to a different ID for that provider $\rightarrow$ **HTTP 409 Conflict** (`OAuthAlreadyLinkedError`).
-  - Provider ID already claimed by another user profile $\rightarrow$ **HTTP 409 Conflict** (`OAuthAlreadyLinkedError`).
-
----
-
-## 3. Complete API Endpoints & Request/Response Reference
-
-### 3.1 Authentication & Registration
-
-#### POST `/tc-auth/send/email/otp/{purpose}`
-Sends an email OTP for the specified purpose (`signup`, `login`, `reset`, `verify`). If `frontend_url` is provided, the email also includes the one-click Magic Link button.
-
-- **Headers**: `Content-Type: application/json`
-- **Path Parameter**: `purpose` (`signup` | `login` | `reset` | `verify`)
-- **Request Body**:
-```json
-{
-  "email": "jane@example.com",
-  "frontend_url": "https://app.example.com"
-}
-```
-*(Note: `frontend_url` is optional for backward compatibility).*
-- **Response (HTTP 200 OK)**:
-```json
-{
-  "expires_at": 1735689600
-}
-```
-
----
-
-#### POST `/tc-auth/send/email/link/{purpose}`
-Directly requests a Magic Link email for the specified purpose (`signup`, `login`, `reset`, `verify`).
-
-- **Headers**: `Content-Type: application/json`
-- **Path Parameter**: `purpose` (`signup` | `login` | `reset` | `verify`)
-- **Request Body**:
-```json
-{
-  "email": "jane@example.com",
-  "frontend_url": "https://app.example.com"
-}
-```
-- **Response (HTTP 200 OK)**:
-```json
-{
-  "expires_at": 1735689600
-}
-```
-
----
-
-#### GET `/tc-auth/link/{purpose}`
-Direct browser verification endpoint when the user clicks the magic link in their email.
-
-- **Query Parameters**:
-  - `email` (string, required): User email address.
-  - `otp` (string, required): Single-use OTP code.
-  - `frontend_url` (string, required): Frontend base URL.
-- **Success Redirects (HTTP 307)**:
-  - `login`: `{frontend_url}/oauth/callback?access_token=...(&refresh_token=...)`
-  - `verify`: `{frontend_url}/magic-link/callback?verified=true&email=...`
-  - `reset`: `{frontend_url}/reset-password?email=...&otp=...`
-  - `signup`: `{frontend_url}/signup?email=...&otp=...&verified=true`
-- **Error Redirect (HTTP 307)**:
-  - `{frontend_url}/magic-link/callback?error={url_encoded_error}`
-
----
-
-#### POST `/tc-auth/link/{purpose}`
-Bot-safe programmatic verification endpoint for Single-Page Apps (SPAs) or confirmation screens.
-
-- **Headers**: `Content-Type: application/json`
-- **Path Parameter**: `purpose` (`signup` | `login` | `reset` | `verify`)
-- **Request Body**:
-```json
-{
-  "email": "jane@example.com",
-  "otp": "123456"
-}
-```
-- **Response (HTTP 200 OK - login, Dual-Token Mode)**:
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "Bearer",
-  "account": {
-    "id": 1,
-    "email": "jane@example.com",
-    "name": "Jane Doe",
-    "role": "user",
-    "status": "active"
-  }
-}
-```
-- **Response (HTTP 200 OK - verify)**:
-```json
-{
-  "success": true,
-  "message": "Email verified successfully",
-  "email": "jane@example.com"
-}
-```
-
----
-
-#### POST `/tc-auth/signup/password`
-Registers a new account using email/handle and password.
-
-- **Headers**: `Content-Type: application/json`
-- **Request Body**:
-```json
-{
-  "name": "Jane Doe",
-  "email": "jane@example.com",
-  "password": "Password123",
-  "handle": "jane"
-}
-```
-- **Response (HTTP 200 OK - Single-Token Mode)**:
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "Bearer",
-  "account": {
-    "id": 1,
-    "uid": "2d7b5f8e-8d8a-4cc4-9c3d-2f2c6c4d2e28",
-    "name": "Jane Doe",
-    "handle": "jane",
-    "email": "jane@example.com",
-    "phone": null,
-    "avatar_url": null,
-    "role": "user",
-    "status": null,
-    "created_at": "2026-09-12T12:00:00",
-    "updated_at": "2026-09-12T12:00:00"
-  }
-}
-```
-- **Response (HTTP 200 OK - Dual-Token Mode)**:
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "Bearer",
-  "account": {
-    "id": 1,
-    "uid": "2d7b5f8e-8d8a-4cc4-9c3d-2f2c6c4d2e28",
-    "name": "Jane Doe",
-    "handle": "jane",
-    "email": "jane@example.com",
-    "phone": null,
-    "avatar_url": null,
-    "role": "user",
-    "status": null,
-    "created_at": "2026-09-12T12:00:00",
-    "updated_at": "2026-09-12T12:00:00"
-  }
-}
-```
-
----
-
-#### POST `/tc-auth/signup/otp`
-Verifies signup OTP and creates a new account.
-
-- **Headers**: `Content-Type: application/json`
-- **Request Body**:
-```json
-{
-  "name": "Jane Doe",
-  "email": "jane@example.com",
-  "password": "Password123",
-  "otp": "123456",
-  "handle": "jane"
-}
-```
-- **Response (HTTP 200 OK)**: Same login payload (Single/Dual Token).
-
----
-
-#### POST `/tc-auth/login/password`
-Authenticates an existing user via identifier (email or handle) and password.
-
-- **Headers**: `Content-Type: application/json`
-- **Request Body**:
-```json
-{
-  "identifier": "jane@example.com",
-  "password": "Password123"
-}
-```
-- **Response (HTTP 200 OK)**: Same login payload (Single/Dual Token).
-
----
-
-#### POST `/tc-auth/login/otp`
-Authenticates an existing user via email OTP.
-
-- **Headers**: `Content-Type: application/json`
-- **Request Body**:
-```json
-{
-  "email": "jane@example.com",
-  "otp": "123456"
-}
-```
-- **Response (HTTP 200 OK)**: Same login payload (Single/Dual Token).
-
----
-
-#### POST `/tc-auth/forgot/password`
-Verifies reset OTP and updates user's password.
-
-- **Headers**: `Content-Type: application/json`
-- **Request Body**:
-```json
-{
-  "email": "jane@example.com",
-  "otp": "123456",
-  "password": "NewPassword123"
-}
-```
-- **Response (HTTP 200 OK)**: Same login payload (Single/Dual Token).
-
----
-
-#### POST `/tc-auth/token/refresh` [NEW]
-Exchanges a valid refresh token for a newly issued access token and rotated refresh token.
-
-- **Headers**: `Content-Type: application/json`
-- **Request Body**:
-```json
-{
-  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-}
-```
-- **Response (HTTP 200 OK)**:
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "Bearer"
-}
-```
-- **Error Responses**:
-  - Missing/invalid token $\rightarrow$ `401 Unauthorized` (`InvalidTokenError`)
-  - Session expired/not found $\rightarrow$ `401 Unauthorized` (`InvalidTokenError`)
-
----
-
-### 3.2 Profile, Session & User OAuth Linking
-
-#### GET `/tc-auth/me`
-Retrieves authenticated user profile, session, and JWT payload.
-
-- **Headers**: `Authorization: Bearer <access_token>`
-- **Response (HTTP 200 OK)**:
-```json
-{
-  "account": {
-    "id": 1,
-    "uid": "2d7b5f8e-8d8a-4cc4-9c3d-2f2c6c4d2e28",
-    "name": "Jane Doe",
-    "handle": "jane",
-    "email": "jane@example.com",
-    "phone": null,
-    "avatar_url": null,
-    "role": "user",
-    "status": null,
-    "created_at": "2026-09-12T12:00:00",
-    "updated_at": "2026-09-12T12:00:00"
-  },
-  "session": {
-    "id": 9,
-    "account_id": 1,
-    "token_hash": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
-    "ip_address": "127.0.0.1",
-    "user_agent": "Mozilla/5.0",
-    "expires_at": "2026-09-19T12:00:00",
-    "created_at": "2026-09-12T12:00:00"
-  },
-  "payload": {
-    "aid": 1,
-    "sid": 9,
-    "type": "access",
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "exp": 1787129867
-  }
-}
-```
-
----
-
-#### PATCH `/tc-auth/me`
-Updates profile information for the authenticated user.
-
-- **Headers**:
-  - `Authorization: Bearer <access_token>`
-  - `Content-Type: application/json`
-- **Request Body**:
-```json
-{
-  "name": "Jane Smith",
-  "avatar_url": "https://example.com/new_avatar.png",
-  "phone": "+15555550100"
-}
-```
-- **Response (HTTP 200 OK)**: Updated account object.
-
----
-
-#### PUT `/tc-auth/update/password`
-Updates the password for the authenticated user.
-
-- **Headers**:
-  - `Authorization: Bearer <access_token>`
-  - `Content-Type: application/json`
-- **Request Body**:
-```json
-{
-  "password": "NewStrongPassword123"
-}
-```
-- **Response (HTTP 200 OK)**:
-```json
-{
-  "success": true,
-  "message": "Password updated successfully"
-}
-```
-
----
-
-#### POST `/tc-auth/logout`
-Destroys the current active session.
-
-- **Headers**: `Authorization: Bearer <access_token>`
-- **Response (HTTP 200 OK)**:
-```json
-{
-  "success": true,
-  "message": "Session destroyed successfully"
-}
-```
-
----
-
-#### POST `/tc-auth/logout-all`
-Destroys all active sessions for the authenticated user.
-
-- **Headers**: `Authorization: Bearer <access_token>`
-- **Response (HTTP 200 OK)**:
-```json
-{
-  "success": true,
-  "message": "All sessions destroyed for account",
-  "count": 3
-}
-```
-
----
-
-#### POST `/tc-auth/account/oauth/link/{provider}` [NEW]
-Aliases:
-- `POST /tc-auth/account/oauth/link/google`
-- `POST /tc-auth/account/oauth/link/github`
-- `POST /tc-auth/account/oauth/link/discord`
-
-- **Headers**: `Authorization: Bearer <access_token>`
-- **Option 1 (Browser Redirect Flow)**:
-  - Query: `?frontend_url=https://app.example.com/settings/security`
-  - Body: `{"frontend_url": "https://app.example.com/settings/security"}`
-  - Response: `HTTP 307 Temporary Redirect` to provider authorization page.
-- **Option 2 (Direct Payload Flow)**:
-  - Body: `{"provider_user_id": "google-user-12345"}`
-  - Response (HTTP 200 OK):
-```json
-{
-  "id": 2,
-  "account_id": 1,
-  "provider": "google",
-  "provider_user_id": "google-user-12345",
-  "created_at": "2026-09-12T12:00:00"
-}
-```
-
----
-
-#### DELETE `/tc-auth/account/oauth/{provider}` [NEW]
-Safely unlinks a connected OAuth provider (`google`, `github`, `discord`) from the authenticated account.
-
-- **Headers**: `Authorization: Bearer <access_token>`
-- **Path Parameter**: `provider` (`google` | `github` | `discord`)
-- **Response (HTTP 200 OK)**:
-```json
-{
-  "success": true,
-  "message": "OAuth link for 'discord' removed successfully"
-}
-```
-- **Error Response (HTTP 400 Bad Request on Lockout Prevention)**:
-```json
-{
-  "success": false,
-  "message": "Cannot unlink provider: account must have a password or at least one other active authentication method"
-}
-```
-
----
-
-#### GET `/tc-auth/account/oauth/links` [NEW]
-Retrieves all connected OAuth providers for the authenticated user.
-
-- **Headers**: `Authorization: Bearer <access_token>`
-- **Response (HTTP 200 OK)**:
-```json
-[
-  {
-    "id": 1,
-    "account_id": 1,
-    "provider": "google",
-    "provider_user_id": "1048291039",
-    "created_at": "2026-09-12T12:00:00"
-  },
-  {
-    "id": 2,
-    "account_id": 1,
-    "provider": "discord",
-    "provider_user_id": "928371948271049281",
-    "created_at": "2026-09-12T12:05:00"
-  }
-]
-```
-
----
-
-### 3.3 OAuth Browser Login & Callback Routes
-
-| Endpoint | Method | Query Parameters | Response / Behavior |
+| Action | localStorage Mode (`cookie_mode=False`) | Cookie Mode (`cookie_mode=True`) | Universal Handling (Works in Both Modes) |
 | :--- | :--- | :--- | :--- |
-| `GET /tc-auth/google/login` | `GET` | `frontend_url` | `307 Redirect` $\rightarrow$ Google OAuth |
-| `GET /tc-auth/google/callback` | `GET` | `code`, `state` | `307 Redirect` $\rightarrow$ `{frontend_url}/oauth/callback?access_token=...` (plus `&refresh_token=...` or `?linked=true&provider=google`) |
-| `GET /tc-auth/github/login` | `GET` | `frontend_url` | `307 Redirect` $\rightarrow$ GitHub OAuth |
-| `GET /tc-auth/github/callback` | `GET` | `code`, `state` | `307 Redirect` $\rightarrow$ `{frontend_url}/oauth/callback?access_token=...` (plus `&refresh_token=...` or `?linked=true&provider=github`) |
-| `GET /tc-auth/discord/login` | `GET` | `frontend_url` | `307 Redirect` $\rightarrow$ Discord OAuth |
-| `GET /tc-auth/discord/callback` | `GET` | `code`, `state` | `307 Redirect` $\rightarrow$ `{frontend_url}/oauth/callback?access_token=...` (plus `&refresh_token=...` or `?linked=true&provider=discord`) |
+| **Login / Signup** | Tokens returned in JSON body -> save to `localStorage` | Browser saves `Set-Cookie` automatically | Save JSON body tokens if present; cookies are saved automatically by browser |
+| **Protected Requests** | Must send `Authorization: Bearer <token>` | Browser sends cookies automatically | Send `credentials: "include"` AND `Authorization: Bearer <token>` (if present) |
+| **OAuth Callback** | Read query param `?access_token=...` -> save to `localStorage` | Cookies already saved by browser on 307 redirect | Read query params into `localStorage` if present; cookies are already in browser |
+| **Token Refresh** | Must send `{ refresh_token }` in JSON body | Browser sends cookie automatically; body `{}` | Send `{ refresh_token: localStorage.getItem("refresh_token") \|\| null }` with `credentials: "include"` |
+| **Logout** | Call `/logout`, remove tokens from `localStorage` | Call `/logout`, browser cookies are cleared by backend | Call `/logout` with `credentials: "include"`, clear `localStorage` |
+| **CORS Requirement** | Standard CORS headers | Backend CORS **must** specify explicit origins (not wildcard `*`) | Explicit origins in CORS backend config (`allow_origins=["http://localhost:3000"]`) |
 
 ---
 
-### 3.4 System, Health & Dashboard Configuration
+### Universal Production Client (`authClient.js`)
 
-#### GET `/tc-auth/config/pulse`
-Health check and system liveness probe. Public endpoint.
+Here is a drop-in universal frontend client that handles **both** modes transparently:
 
-- **Response (HTTP 200 OK)**:
-```json
-{
-  "system_time": "2026-09-12T12:00:00.000000",
-  "response": "Hello",
-  "status": "healthy",
-  "state": "active"
+```javascript
+// authClient.js
+const API_BASE = "https://api.example.com/tc-auth";
+
+/**
+ * Universal fetch wrapper supporting both localStorage & Cookie modes
+ */
+export async function apiRequest(endpoint, options = {}) {
+  const token = localStorage.getItem("access_token");
+
+  const headers = {
+    "Content-Type": "application/json",
+    ...(options.headers || {}),
+  };
+
+  // If token is saved in localStorage, attach Bearer header.
+  // In Cookie mode, backend accepts either Bearer header or Cookie.
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  // Always include credentials so cookies are sent if in Cookie mode
+  const response = await fetch(`${API_BASE}${endpoint}`, {
+    ...options,
+    headers,
+    credentials: "include", // CRITICAL for Cookie mode
+  });
+
+  return response;
 }
-```
 
----
+/**
+ * Universal Login
+ */
+export async function login(identifier, password) {
+  const res = await apiRequest("/login/password", {
+    method: "POST",
+    body: JSON.stringify({ identifier, password }),
+  });
 
-#### GET `/tc-auth/config/load/`
-Loads the active in-memory configuration for all services. Requires `superadmin` role.
+  const data = await res.json();
+  if (res.ok) {
+    // If backend returns tokens in body (localStorage mode or dual), save them:
+    if (data.access_token) {
+      localStorage.setItem("access_token", data.access_token);
+    }
+    if (data.refresh_token) {
+      localStorage.setItem("refresh_token", data.refresh_token);
+    }
+  }
+  return { ok: res.ok, data };
+}
 
-- **Headers**: `Authorization: Bearer <access_token>`
-- **Response (HTTP 200 OK)**:
-```json
-{
-  "email": {
-    "host": "smtp.gmail.com",
-    "port": 587,
-    "username": "mailer@example.com",
-    "password": "***",
-    "sender": "noreply@example.com",
-    "sender_name": "TC Auth",
-    "use_tls": true
-  },
-  "github": {
-    "client_id": "github-client-id",
-    "client_secret": "***",
-    "redirect_uri": "https://api.example.com/tc-auth/github/callback"
-  },
-  "google": {
-    "client_id": "google-client-id",
-    "client_secret": "***",
-    "redirect_uri": "https://api.example.com/tc-auth/google/callback"
-  },
-  "discord": {
-    "client_id": "discord-client-id",
-    "client_secret": "***",
-    "redirect_uri": "https://api.example.com/tc-auth/discord/callback"
-  },
-  "jwt": {
-    "secret_key": "jwt-secret-key",
-    "algorithm": "HS256",
-    "session_duration_days": 7
+/**
+ * Universal Token Refresh
+ */
+export async function refreshToken() {
+  const storedRefreshToken = localStorage.getItem("refresh_token");
+
+  // In Cookie mode, body can be empty because the browser sends the refresh_token cookie.
+  // In localStorage mode, body carries the refresh token.
+  const payload = storedRefreshToken ? { refresh_token: storedRefreshToken } : {};
+
+  const res = await apiRequest("/token/refresh", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json();
+  if (res.ok && data.access_token) {
+    localStorage.setItem("access_token", data.access_token);
+    if (data.refresh_token) {
+      localStorage.setItem("refresh_token", data.refresh_token);
+    }
+  }
+  return { ok: res.ok, data };
+}
+
+/**
+ * Universal OAuth Callback Handler (/oauth/callback route)
+ */
+export function handleOAuthCallback() {
+  const params = new URLSearchParams(window.location.search);
+  const accessToken = params.get("access_token");
+  const refreshToken = params.get("refresh_token");
+
+  // If parameters exist in URL (localStorage mode or fallback), persist them:
+  if (accessToken) {
+    localStorage.setItem("access_token", accessToken);
+  }
+  if (refreshToken) {
+    localStorage.setItem("refresh_token", refreshToken);
+  }
+
+  // In Cookie mode, cookies are already set by the browser via Set-Cookie on the 307 redirect!
+  
+  // Clean URL to avoid keeping tokens in browser history
+  window.history.replaceState({}, document.title, window.location.pathname);
+}
+
+/**
+ * Universal Logout
+ */
+export async function logout() {
+  try {
+    await apiRequest("/logout", { method: "POST" });
+  } finally {
+    // Clear client-side storage regardless of mode
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    window.location.href = "/login";
   }
 }
 ```
 
 ---
 
-#### GET `/tc-auth/config/counts`
-Returns table record counts. Requires `superadmin` role.
+## 1.3 Backend Configuration
 
-- **Headers**: `Authorization: Bearer <access_token>`
-- **Response (HTTP 200 OK)**:
-```json
-{
-  "accounts": 128,
-  "oauth": 45,
-  "sessions": 89,
-  "otp": 4
-}
+### Environment Variables (`config.py`)
+```env
+COOKIE_MODE=false
+COOKIE_ACCESS_NAME=access_token
+COOKIE_REFRESH_NAME=refresh_token
+COOKIE_PATH=/
+COOKIE_DOMAIN=
+COOKIE_SECURE=false
+COOKIE_HTTPONLY=true
+COOKIE_SAMESITE=lax
+COOKIE_MAX_AGE=
 ```
 
----
-
-#### POST `/tc-auth/config/jwt`
-Updates JWT configuration, session lifespan, and dual-token mode settings. Requires `superadmin` role.
-
-- **Headers**:
-  - `Authorization: Bearer <access_token>`
-  - `Content-Type: application/json`
-- **Request Body**:
-```json
-{
-  "secret_key": "new-super-secret-key",
-  "algorithm": "HS256",
-  "session_duration_days": 7,
-  "dual_token_mode": true,
-  "access_token_expire_minutes": 15,
-  "refresh_token_expire_days": 7
-}
-```
-- **Response (HTTP 200 OK)**:
-```json
-{
-  "success": true,
-  "message": "JWT configured successfully"
-}
-```
-
----
-
-#### POST `/tc-auth/config/discord` [NEW]
-Configures Discord OAuth credentials. Requires `superadmin` role.
-
-- **Headers**:
-  - `Authorization: Bearer <access_token>`
-  - `Content-Type: application/json`
-- **Request Body**:
-```json
-{
-  "client_id": "discord-app-id",
-  "client_secret": "discord-client-secret",
-  "redirect_uri": "https://api.example.com/tc-auth/discord/callback"
-}
-```
-- **Response (HTTP 200 OK)**:
-```json
-{
-  "success": true,
-  "message": "Discord OAuth configured successfully"
-}
-```
-
----
-
-#### POST `/tc-auth/config/google` & POST `/tc-auth/config/github`
-Configures Google and GitHub OAuth credentials. Requires `superadmin` role.
-
-- **Request Body**:
-```json
-{
-  "client_id": "provider-client-id",
-  "client_secret": "provider-client-secret",
-  "redirect_uri": "https://api.example.com/tc-auth/{provider}/callback"
-}
-```
-- **Response (HTTP 200 OK)**: `{"success": true, "message": "Google/GitHub OAuth configured successfully"}`
-
----
-
-#### POST `/tc-auth/config/email`
-Configures SMTP email credentials. Requires `superadmin` role.
-
-- **Request Body**:
-```json
-{
-  "host": "smtp.gmail.com",
-  "port": 587,
-  "username": "mailer@example.com",
-  "password": "smtp-app-password",
-  "sender": "mailer@example.com",
-  "sender_name": "TC Auth Service",
-  "use_tls": true
-}
-```
-- **Response (HTTP 200 OK)**: `{"success": true, "message": "Email service configured successfully"}`
-
----
-
-### 3.5 Admin Resource Management (Superadmin Only)
-
-All endpoints in this group require `Authorization: Bearer <access_token>` with `superadmin` role.
-
-#### Admin Accounts (`/tc-auth/account`)
-- `GET /tc-auth/account?page=1&limit=10` $\rightarrow$ `[{ "id": 1, "name": "...", ... }]`
-- `GET /tc-auth/account/query?field=email&value=jane@example.com` $\rightarrow$ `[{ ... }]`
-- `POST /tc-auth/account/` (Create User):
-  - Body:
-    ```json
-    {
-      "name": "Jane Doe",
-      "email": "jane@example.com",
-      "handle": "jane",
-      "password": "Password123",
-      "role": "user",
-      "status": "active"
-    }
-    ```
-  - Response: Created account object.
-- `PATCH /tc-auth/account/` (Super Update):
-  - Body:
-    ```json
-    {
-      "account_id": 1,
-      "role": "admin",
-      "status": "active",
-      "password": "NewPassword123"
-    }
-    ```
-  - Response: Updated account object.
-- `DELETE /tc-auth/account/`:
-  - Body: `{"account_id": 1}`
-  - Response: `{"success": true, "message": "Account deleted successfully"}`
-
-#### Admin Sessions (`/tc-auth/session`)
-- `GET /tc-auth/session?page=1&limit=10` $\rightarrow$ `[{ "id": 1, "account_id": 1, "ip_address": "...", ... }]`
-- `GET /tc-auth/session/query?field=ip&value=127.0.0.1` $\rightarrow$ `[{ ... }]`
-- `DELETE /tc-auth/session/` $\rightarrow$ Body: `{"session_id": 9}` $\rightarrow$ `{"success": true, "message": "Session destroyed successfully"}`
-- `DELETE /tc-auth/session/all` $\rightarrow$ Body: `{"account_id": 1}` $\rightarrow$ `{"success": true, "message": "All sessions destroyed for account", "count": 2}`
-- `DELETE /tc-auth/session/cleanup` $\rightarrow$ `{"success": true, "message": "Expired sessions cleaned up successfully", "count": 5}`
-- `DELETE /tc-auth/session/clear` $\rightarrow$ `{"success": true, "message": "All sessions cleared successfully", "count": 20}`
-
-#### Admin OAuth Links (`/tc-auth/oauth`)
-- `GET /tc-auth/oauth?page=1&limit=10` $\rightarrow$ `[{ "id": 1, "account_id": 1, "provider": "google", ... }]`
-- `GET /tc-auth/oauth/query?field=provider_id&value=12345` $\rightarrow$ `[{ ... }]`
-- `POST /tc-auth/oauth/` $\rightarrow$ Body: `{"account_id": 1, "provider": "google", "provider_user_id": "12345"}` $\rightarrow$ Created link object.
-- `DELETE /tc-auth/oauth/` $\rightarrow$ Body: `{"account_id": 1, "provider": "google"}` $\rightarrow$ `{"success": true, "message": "OAuth link removed successfully"}`
-
-#### Admin OTP Records (`/tc-auth/otp`)
-- `GET /tc-auth/otp?page=1&limit=10` $\rightarrow$ `[{ "id": 1, "identifier": "jane@example.com", "purpose": "login", ... }]`
-- `GET /tc-auth/otp/query?identifier=jane@example.com` $\rightarrow$ `[{ ... }]`
-- `POST /tc-auth/otp/` $\rightarrow$ Body: `{"identifier": "jane@example.com", "purpose": "login", "expiry": 300}` $\rightarrow$ `{"otp": "123456", "expires_at": 1735689600}`
-- `DELETE /tc-auth/otp/` $\rightarrow$ Body: `{"identifier": "jane@example.com", "purpose": "login"}` $\rightarrow$ `{"success": true, "message": "OTP revoked successfully", "count": 1}`
-- `DELETE /tc-auth/otp/cleanup` $\rightarrow$ `{"success": true, "message": "Expired OTPs cleaned successfully", "count": 3}`
-- `DELETE /tc-auth/otp/clear` $\rightarrow$ `{"success": true, "message": "All OTPs cleared successfully", "count": 10}`
-
----
-
-## 4. FastAPI Dependencies & Auth Context
-
-`auth.deps` provides dependencies for protecting custom application endpoints:
-
+### SDK Initializer (`main.py` / `connect.py`)
 ```python
-from fastapi import APIRouter, Depends
-from connect import auth
-
-router = APIRouter()
-
-# 1. Complete Auth Context (account, session, payload)
-@router.get("/me")
-def get_me(user: dict = Depends(auth.deps.get_current_user)):
-    return user
-
-# 2. Account Object Only
-@router.get("/profile")
-def get_profile(account: dict = Depends(auth.deps.get_current_account)):
-    return account
-
-# 3. Session Object Only
-@router.get("/session")
-def get_session(session: dict = Depends(auth.deps.get_current_session)):
-    return session
-
-# 4. Role Requirement (Returns 403 if role does not match)
-@router.get("/admin")
-def admin_area(admin: dict = Depends(auth.role.require("admin", "superadmin"))):
-    return {"message": "Welcome admin", "admin": admin}
-
-# 5. Status Guard (Returns 403 if status does not match)
-@router.get("/active-only")
-def active_area(user: dict = Depends(auth.status.require("active"))):
-    return {"message": "Welcome active user", "user": user}
+auth.cookie.config(
+    cookie_mode=config.COOKIE_MODE,               # bool: True enables cookie mode
+    access_cookie_name=config.COOKIE_ACCESS_NAME, # default: "access_token"
+    refresh_cookie_name=config.COOKIE_REFRESH_NAME,# default: "refresh_token"
+    path=config.COOKIE_PATH,                      # default: "/"
+    domain=config.COOKIE_DOMAIN,                  # default: None
+    secure=config.COOKIE_SECURE,                  # set to True in HTTPS production
+    httponly=config.COOKIE_HTTPONLY,              # default: True (prevents JS XSS access)
+    samesite=config.COOKIE_SAMESITE,              # "lax", "strict", or "none" (none requires secure=True)
+    max_age=config.COOKIE_MAX_AGE,                # None = automatically synchronized with JWT durations
+)
 ```
 
 ---
 
-## 5. Standard Error Format & Status Code Reference
+## 1.3 New & Updated Routes Specification
 
-All exceptions in `tc_auth` inherit from `AuthError` and produce a uniform JSON format:
+### 1. New Route: `POST /tc-auth/config/cookie`
+Configures cookie behavior dynamically at runtime (Admin Dashboard).
 
-```json
-{
-  "success": false,
-  "message": "Human-readable description of what went wrong"
+* **Path**: `/tc-auth/config/cookie`
+* **Method**: `POST`
+* **Authentication**: Required (`superadmin` role)
+* **Request Headers**: `Authorization: Bearer <token>`
+* **Request Body** (`CookieConfig`):
+  ```json
+  {
+    "cookie_mode": true,
+    "access_cookie_name": "access_token",
+    "refresh_cookie_name": "refresh_token",
+    "path": "/",
+    "domain": null,
+    "secure": false,
+    "httponly": true,
+    "samesite": "lax",
+    "max_age": null
+  }
+  ```
+* **Success Response** (`200 OK`):
+  ```json
+  {
+    "success": true,
+    "message": "Cookie configured successfully"
+  }
+  ```
+* **Error Responses**:
+  * `400 Bad Request`: Invalid parameter (e.g. `samesite="none"` without `secure=true`).
+  * `401 Unauthorized`: Missing or invalid credentials.
+  * `403 Forbidden`: User is not a `superadmin`.
+
+---
+
+### 2. Updated Route: `GET /tc-auth/config/load/`
+Returns the current configuration of all auth subsystems, now including the `"cookie"` configuration block.
+
+* **Path**: `/tc-auth/config/load/`
+* **Method**: `GET`
+* **Authentication**: Required (`superadmin` role)
+* **Success Response** (`200 OK`):
+  ```json
+  {
+    "email": { ... },
+    "github": { ... },
+    "google": { ... },
+    "discord": { ... },
+    "jwt": { ... },
+    "cookie": {
+      "cookie_mode": false,
+      "access_cookie_name": "access_token",
+      "refresh_cookie_name": "refresh_token",
+      "path": "/",
+      "domain": null,
+      "secure": false,
+      "httponly": true,
+      "samesite": "lax",
+      "max_age": null
+    }
+  }
+  ```
+
+---
+
+### 3. Updated Route: `POST /tc-auth/token/refresh`
+Refreshes the access token (and rotates refresh token if dual token mode).
+
+* **Path**: `/tc-auth/token/refresh`
+* **Method**: `POST`
+* **Authentication**: None
+* **Request Body** (`RefreshTokenRequest`):
+  * **localStorage mode**: `{"refresh_token": "<refresh_jwt>"}`
+  * **Cookie mode**: `{}` (Request body is optional; token is read automatically from the `refresh_token` cookie)
+* **Behavior when `cookie_mode=True`**:
+  * Reads `refresh_token` from request body or from `request.cookies["refresh_token"]`.
+  * Emits `Set-Cookie` response headers updating the access and refresh token cookies.
+  * Returns success status and cookie metadata without leaking tokens in JSON body:
+    ```json
+    {
+      "success": true,
+      "message": "Tokens refreshed successfully",
+      "token_type": "Cookie",
+      "cookie": {
+        "cookie_mode": true,
+        "access_cookie_name": "access_token",
+        "refresh_cookie_name": "refresh_token",
+        "path": "/",
+        "domain": ".codesena.me",
+        "secure": true,
+        "samesite": "lax"
+      }
+    }
+    ```
+* **Behavior when `cookie_mode=False`**:
+  * Returns tokens in JSON response body:
+    ```json
+    {
+      "access_token": "eyJhbGciOi...",
+      "refresh_token": "eyJhbGciOi...",
+      "token_type": "Bearer"
+    }
+    ```
+
+---
+
+### 4. Updated Auth Routes (Login, Signup, Magic Link, Forgot Password)
+* `POST /tc-auth/signup/password`
+* `POST /tc-auth/signup/otp`
+* `POST /tc-auth/login/password`
+* `POST /tc-auth/login/otp`
+* `POST /tc-auth/forgot/password`
+* `POST /tc-auth/link/login`
+* **Behavior**:
+  * If `cookie_mode=False`: Returns standard JSON payload with tokens (`access_token`, `refresh_token`, `token_type`: `"Bearer"`, `account`); no cookies set.
+  * If `cookie_mode=True`: Sets `Set-Cookie` headers on HTTP response and returns account and cookie metadata without leaking tokens in the body:
+    ```json
+    {
+      "token_type": "Cookie",
+      "account": {
+        "id": 1,
+        "email": "user@example.com",
+        "name": "User Name",
+        "role": "user"
+      },
+      "cookie": {
+        "cookie_mode": true,
+        "access_cookie_name": "access_token",
+        "refresh_cookie_name": "refresh_token",
+        "path": "/",
+        "domain": ".codesena.me",
+        "secure": true,
+        "samesite": "lax"
+      }
+    }
+    ```
+
+---
+
+### 5. Updated Magic Link GET Callback: `GET /tc-auth/link/{purpose}`
+* **Behavior when `purpose=login`**:
+  * Redirects with `307 Temporary Redirect` to `{frontend_url}/oauth/callback?access_token=...&refresh_token=...`.
+  * When `cookie_mode=True`: Attaches `Set-Cookie` headers to the `RedirectResponse`.
+
+---
+
+### 6. Updated Logout Routes: `POST /tc-auth/logout` & `POST /tc-auth/logout-all`
+* **Path**: `/tc-auth/logout` and `/tc-auth/logout-all`
+* **Method**: `POST`
+* **Authentication**: Required (`Authorization: Bearer <token>` or `access_token` cookie)
+* **Behavior**:
+  * Destroys active database session(s).
+  * When `cookie_mode=True`: Emits `Set-Cookie` headers with expired max-age to immediately delete `access_token` and `refresh_token` cookies from the browser.
+* **Success Response** (`200 OK`):
+  ```json
+  {
+    "success": true,
+    "message": "Session deleted successfully"
+  }
+  ```
+
+---
+
+### 7. Updated OAuth Callbacks: `/google/callback`, `/github/callback`, `/discord/callback`
+* **Path**: `/tc-auth/{provider}/callback`
+* **Behavior**:
+  * Redirects user back to `{frontend_url}/oauth/callback?access_token=...&refresh_token=...`.
+  * **When `cookie_mode=True`**:
+    * Emits `Set-Cookie` headers on the `RedirectResponse`.
+    * **Preserves** `access_token` and `refresh_token` in the redirect query parameters so existing frontend OAuth callback handlers continue functioning without changes.
+
+---
+
+### 8. Updated Protected Routes (`AuthDeps`)
+* `GET /tc-auth/me`
+* `PATCH /tc-auth/me`
+* `PUT /tc-auth/update/password`
+* All routes protected by `auth.deps.get_current_user`, `auth.role.require()`, etc.
+* **Behavior**:
+  * Checks for `Authorization: Bearer <token>` header first.
+  * If header is missing, checks `request.cookies.get("access_token")`.
+  * If a valid token is found via either mechanism, the request is authenticated.
+  * If neither is present, returns `401 Unauthorized` (`"Missing authorization credentials"`).
+
+---
+
+## 1.4 Frontend Integration Guide
+
+### 1. HTTP Client Configuration (CORS & Credentials)
+
+When using **Cookie mode**, the browser must be instructed to include and store cookies across cross-origin requests.
+
+#### Using Native `fetch()`
+Add `credentials: "include"` to all requests:
+```javascript
+const response = await fetch("https://api.example.com/tc-auth/login/password", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  credentials: "include", // CRITICAL: Allows browser to send and receive cookies
+  body: JSON.stringify({
+    identifier: "user@example.com",
+    password: "Password123!",
+  }),
+});
+```
+
+#### Using `axios`
+Enable `withCredentials`:
+```javascript
+import axios from "axios";
+
+const api = axios.create({
+  baseURL: "https://api.example.com/tc-auth",
+  withCredentials: true, // CRITICAL: Sends and receives cookies automatically
+});
+```
+
+> [!IMPORTANT]
+> **CORS Backend Requirement**: When `credentials: "include"` is used, the browser rejects responses if the backend has `allow_origins=["*"]`. The backend must declare explicit allowed origins (e.g., `allow_origins=["http://localhost:3000", "https://app.example.com"]`).
+
+---
+
+### 2. Authentication Handling: localStorage vs Cookie
+
+#### In localStorage Mode (`cookie_mode=False`, Default)
+```javascript
+// On Login:
+const data = await response.json();
+localStorage.setItem("access_token", data.access_token);
+if (data.refresh_token) {
+  localStorage.setItem("refresh_token", data.refresh_token);
+}
+
+// On Subsequent Requests:
+const res = await fetch("https://api.example.com/tc-auth/me", {
+  headers: {
+    Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+  },
+});
+```
+
+#### In Cookie Mode (`cookie_mode=True`)
+```javascript
+// On Login:
+// Browser stores cookies automatically! No localStorage manipulation required.
+const data = await response.json();
+console.log("Logged in user:", data.account);
+
+// On Subsequent Requests:
+// Browser attaches cookies automatically:
+const res = await fetch("https://api.example.com/tc-auth/me", {
+  credentials: "include",
+});
+const user = await res.json();
+```
+
+---
+
+### 3. Token Refresh in Cookie Mode
+
+In Cookie Mode, the frontend does not need to send the refresh token in the body:
+```javascript
+async function refreshAccessToken() {
+  const response = await fetch("https://api.example.com/tc-auth/token/refresh", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include", // Browser sends refresh_token cookie automatically
+    body: JSON.stringify({}), // Body can be empty
+  });
+
+  if (response.ok) {
+    console.log("Tokens refreshed and cookies updated automatically!");
+  } else {
+    // Refresh failed or session expired -> redirect to login
+    window.location.href = "/login";
+  }
 }
 ```
 
-### Complete Status Code Mapping
+---
 
-| Exception Class | Status Code | Reason / Example Trigger |
-| :--- | :--- | :--- |
-| `InvalidEmailPurposeError` | `400 Bad Request` | Purpose not in `signup`, `login`, `reset`, `verify` |
-| `InvalidConfigError` | `400 Bad Request` | Missing or malformed parameters in `.config(...)` |
-| `WeakPasswordError` | `400 Bad Request` | Password fails length, uppercase, lowercase, or digit rules |
-| `OAuthCallbackError` | `400 Bad Request` | OAuth code exchange failure, state mismatch, or profile fetch failure |
-| `AuthError` (Lockout) | `400 Bad Request` | Attempting to unlink last remaining authentication method on an account |
-| `OTPInvalidError` | `401 Unauthorized` | Invalid OTP code entered |
-| `OTPExpiredError` | `401 Unauthorized` | Expired OTP code |
-| `InvalidTokenError` | `401 Unauthorized` | Expired/invalid JWT access token, or refresh token used on protected route |
-| `NotAuthenticatedError` | `401 Unauthorized` | Missing `Authorization: Bearer <token>` header or invalid session |
-| `PermissionDeniedError` | `403 Forbidden` | Insufficient user role (e.g. non-superadmin hitting `/config/*`) |
-| `AccountBlockedError` | `403 Forbidden` | Account status blocked or inactive |
-| `UserNotFoundError` | `404 Not Found` | Requested user does not exist |
-| `OTPNotFoundError` | `404 Not Found` | Target OTP record not found |
-| `UserAlreadyExistsError` | `409 Conflict` | Email, handle, or phone already registered |
-| `ConflictError` | `409 Conflict` | OAuth provider account already linked to another user profile |
-| `OAuthAlreadyLinkedError` | `409 Conflict` | Provider account is already linked to this or another account |
-| `EmailNotConfiguredError` | `500 Internal Error` | SMTP settings not configured before sending email |
-| `OAuthNotConfiguredError` | `500 Internal Error` | OAuth provider not configured before starting OAuth flow |
-| `EmailSendError` | `502 Bad Gateway` | SMTP server connection, timeout, or transmission error |
+### 4. OAuth Callback Handling
+
+The OAuth callback redirect URL retains query parameters in both modes:
+```javascript
+// Frontend route: /oauth/callback
+const params = new URLSearchParams(window.location.search);
+const accessToken = params.get("access_token");
+const refreshToken = params.get("refresh_token");
+
+// If in localStorage mode:
+if (accessToken) {
+  localStorage.setItem("access_token", accessToken);
+  if (refreshToken) localStorage.setItem("refresh_token", refreshToken);
+}
+
+// If in Cookie mode:
+// Cookies are ALREADY stored in document.cookie / browser jar from the 307 redirect!
+// Redirect user directly to dashboard:
+window.location.href = "/dashboard";
+```
+
+---
+
+### 5. Logout Flow
+
+```javascript
+async function logout() {
+  await fetch("https://api.example.com/tc-auth/logout", {
+    method: "POST",
+    credentials: "include", // Required to send session and receive expired cookie headers
+  });
+
+  // Clean local storage if applicable
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
+
+  window.location.href = "/login";
+}
+```
+
+---
+
+# Section 2: `api_docs` Changes (`api/filename.md`)
+
+Below are the changes made to documentation files in `api_docs/`:
+
+### `api/dashboard_route.md`
+- **Added `POST /tc-auth/config/cookie` documentation**:
+  - Request schema (`CookieConfig`): `cookie_mode`, `access_cookie_name`, `refresh_cookie_name`, `path`, `domain`, `secure`, `httponly`, `samesite`, `max_age`.
+  - Requires `superadmin` role.
+  - Return structure: `{"success": true, "message": "Cookie configured successfully"}`.
+- **Updated `GET /tc-auth/config/load/`**:
+  - Added `"cookie"` object to the returned JSON response showing current cookie status and settings.
+
+### `api/login_route.md`
+- **Updated Signup & Login Endpoints**:
+  - Added notes to `POST /signup/password`, `POST /signup/otp`, `POST /login/password`, `POST /login/otp`, `POST /forgot/password`: when `cookie_mode=True`, `Set-Cookie` response headers are attached for `access_token` and `refresh_token`.
+- **Updated `POST /token/refresh`**:
+  - Documented that `refresh_token` field in request body is optional when cookie mode is enabled, as the endpoint extracts it directly from `request.cookies["refresh_token"]`.
+  - Documented that updated tokens are emitted via `Set-Cookie` headers.
+- **Updated `GET /link/{purpose}` (Magic Link)**:
+  - Documented that the HTTP 307 redirect response attaches `Set-Cookie` headers on successful login.
+
+### `api/account_route.md`
+- **Updated `POST /logout` & `POST /logout-all`**:
+  - Documented that both logout endpoints clear and expire `access_token` and `refresh_token` cookies when `cookie_mode=True`.
+
+### `api/oauth_route.md`
+- **Updated OAuth Callback Endpoints** (`/google/callback`, `/github/callback`, `/discord/callback`):
+  - Added specification that when `cookie_mode=True`, `Set-Cookie` headers are set on the `RedirectResponse` while preserving URL query parameters.
+
+### `api/oauth_integration.md`
+- **Updated Frontend Callback Section**:
+  - Added instructions for handling OAuth responses under both `localStorage` and `Cookie` modes.
+  - Highlighted that cookie mode automatically populates session cookies before the browser arrives at `/oauth/callback`.
+
+### `api/token_usage_guide.md`
+- **Updated Token Storage & Transmission Sections**:
+  - Added architectural comparison of `localStorage` vs `Cookie` modes.
+  - Added frontend configuration recommendations (`credentials: "include"`, `withCredentials: true`, SameSite attributes, and HTTPS requirements).
+  - Documented dual authentication support in backend dependencies (`HTTPBearer` fallback to cookie).
+
+---
+
+# Section 3: `usage` (SDK Changes) (`sdk/folder/filename.md`)
+
+Below are the changes made to SDK code and documentation files in `usage/`:
+
+### `sdk/cookie/cookie.py` (New File)
+- **Created SDK Usage Script**:
+  - Demonstrates `auth.cookie.load()` to read current cookie configuration.
+  - Demonstrates `auth.cookie.config(cookie_mode=False)` for default localStorage mode.
+  - Demonstrates `auth.cookie.config(cookie_mode=True, ...)` for enabling cookie mode with custom flags (`secure`, `httponly`, `samesite`, `max_age`).
+  - Demonstrates `auth.cookie.is_cookie_mode()` helper.
+
+### `sdk/cookie/cookie.md` (New File)
+- **Created SDK Documentation**:
+  - Comprehensive guide on `auth.cookie` module methods, parameter definitions, and defaults.
+  - Comparison table between localStorage mode and Cookie mode.
+  - Dashboard API endpoint reference for `POST /tc-auth/config/cookie` and `GET /tc-auth/config/load/`.
+  - OAuth backwards-compatibility explanation.
+
+### `sdk/connect/connect.py`
+- **Updated Service Exposure**:
+  - Added `# auth.cookie -> CookieService` under section `# 2. INITIALIZE TC-AUTH`.
+- **Added Cookie Configuration Section**:
+  - Added section `# 8. COOKIE CONFIGURATION (OPTIONAL)` demonstrating `auth.cookie.config(cookie_mode=False, ...)`.
+
+### `sdk/auth/auth.py`
+- **Updated `create_login_response()` Documentation**:
+  - Documented optional `response: Response | None = None` parameter on `auth.service.create_login_response(...)`, `auth.service.signup(...)`, and `auth.service.login(...)`.
+  - Clarified that the method continues to return the standard dictionary (`access_token`, `token_type`, `account`, `refresh_token`), while setting cookies on `response` if provided.
+
+### `sdk/auth/auth.md`
+- **Updated Method Descriptions**:
+  - Added notes regarding cookie delivery when `response` object is passed into `create_login_response()`.
+
+### `sdk/dependency/dependency.py` & `sdk/dependency/dependency.md`
+- **Updated Auth Dependency Usage**:
+  - Documented that `auth.deps.get_current_user`, `get_current_account`, and dependent role/status dependencies automatically extract tokens from either `Authorization: Bearer <token>` or request cookies.

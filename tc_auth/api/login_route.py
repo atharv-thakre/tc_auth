@@ -1,5 +1,5 @@
 from urllib.parse import quote_plus
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Response
 from fastapi.responses import RedirectResponse
 
 from ..schema import (
@@ -16,6 +16,8 @@ from ..schema import (
 from ..exceptions.error import (
     AuthError,
     InvalidEmailPurposeError,
+    InvalidTokenError,
+    MissingRequiredFieldError,
 )
 
 
@@ -26,11 +28,13 @@ class AuthRoutes:
         auth_service,
         otp_service,
         get_user,
+        cookie_service=None,
     ):
         self.email_service = email_service
         self.auth_service = auth_service
         self.otp_service = otp_service
         self.get_user = get_user
+        self.cookie_service = cookie_service
 
         self.router = APIRouter(tags=["Sign UP / IN"])
 
@@ -139,7 +143,14 @@ class AuthRoutes:
                 if refresh_token:
                     params.append(f"refresh_token={quote_plus(refresh_token)}")
                 target = f"{base_fe}/oauth/callback?{'&'.join(params)}"
-                return RedirectResponse(url=target, status_code=307)
+                redirect_res = RedirectResponse(url=target, status_code=307)
+                if self.cookie_service and self.cookie_service.is_cookie_mode():
+                    self.cookie_service.set_auth_cookies(
+                        response=redirect_res,
+                        access_token=access_token,
+                        refresh_token=refresh_token,
+                    )
+                return redirect_res
 
             elif normalized_purpose == "verify":
                 self.auth_service.verify_email_magic_link(
@@ -177,6 +188,7 @@ class AuthRoutes:
     def verify_magic_link_post(
         self,
         request: Request,
+        response: Response,
         purpose: str,
         body: VerifyMagicLinkRequest,
     ):
@@ -189,6 +201,7 @@ class AuthRoutes:
             return self.auth_service.login_magic_link(
                 email=body.email,
                 otp=body.otp,
+                response=response,
                 **self._request_meta(request),
             )
 
@@ -217,6 +230,7 @@ class AuthRoutes:
     def signup_with_otp(
         self,
         request: Request,
+        response: Response,
         body: SignupOTPRequest,
     ):
         self.otp_service.verify(
@@ -230,6 +244,7 @@ class AuthRoutes:
             email=body.email,
             password=body.password,
             handle=body.handle,
+            response=response,
             **self._request_meta(request),
         )
 
@@ -240,6 +255,7 @@ class AuthRoutes:
     def signup_with_password(
         self,
         request: Request,
+        response: Response,
         body: SignupPasswordRequest,
     ):
         return self.auth_service.signup(
@@ -247,6 +263,7 @@ class AuthRoutes:
             email=body.email,
             handle=body.handle,
             password=body.password,
+            response=response,
             **self._request_meta(request),
         )
 
@@ -257,6 +274,7 @@ class AuthRoutes:
     def login_with_otp(
         self,
         request: Request,
+        response: Response,
         body: LoginOTPRequest,
     ):
         self.otp_service.verify(
@@ -271,6 +289,7 @@ class AuthRoutes:
 
         return self.auth_service.create_login_response(
             account=account,
+            response=response,
             **self._request_meta(request),
         )
 
@@ -281,11 +300,13 @@ class AuthRoutes:
     def login_with_password(
         self,
         request: Request,
+        response: Response,
         body: LoginPasswordRequest,
     ):
         return self.auth_service.login(
             identifier=body.identifier,
             password=body.password,
+            response=response,
             **self._request_meta(request),
         )
 
@@ -296,10 +317,11 @@ class AuthRoutes:
     def forgot_password(
         self,
         request: Request,
+        response: Response,
         body: ForgotPasswordRequest,
     ):
         if not getattr(body, "password", None):
-            raise AuthError("New password is required to reset password")
+            raise MissingRequiredFieldError("password", "New password is required to reset password")
 
         self.otp_service.verify(
             identifier=body.email,
@@ -318,6 +340,7 @@ class AuthRoutes:
 
         return self.auth_service.create_login_response(
             account=account,
+            response=response,
             **self._request_meta(request),
         )
 
@@ -327,9 +350,22 @@ class AuthRoutes:
 
     def refresh_token(
         self,
-        body: RefreshTokenRequest,
+        request: Request,
+        response: Response,
+        body: RefreshTokenRequest | None = None,
     ):
-        return self.auth_service.refresh_tokens(body.refresh_token)
+        token = None
+        if body and body.refresh_token:
+            token = body.refresh_token
+        elif self.cookie_service and self.cookie_service.is_cookie_mode():
+            token = self.cookie_service.extract_refresh_token(request)
+        elif request.cookies.get("refresh_token"):
+            token = request.cookies.get("refresh_token")
+
+        if not token:
+            raise InvalidTokenError(field="refresh_token", message="Missing refresh token")
+
+        return self.auth_service.refresh_tokens(token, response=response)
 
     # ==========================================================
     # PRIVATE
