@@ -500,7 +500,6 @@ In `.env`:
 # LOGGING CONFIGURATION
 # ==========================================================
 LOGGING=true
-LOG_ENABLED=true
 LOG_DIR=logs
 LOG_STATIC_MOUNT=false
 LOG_LEVEL=INFO
@@ -513,7 +512,7 @@ In `main.py`:
 from config import config
 
 auth.log.config(
-    logging=config.LOG_ENABLED,
+    logging=config.LOGGING,
     logs_dir=config.LOG_DIR,
     static_mount_logs=config.LOG_STATIC_MOUNT,
     level=config.LOG_LEVEL,

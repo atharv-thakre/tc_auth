@@ -78,7 +78,7 @@ if config.DISCORD_CLIENT_ID and config.DISCORD_CLIENT_SECRET:
 
 
 auth.log.config(
-    logging=config.LOG_ENABLED,
+    logging=config.LOGGING,
     logs_dir=config.LOG_DIR,
     static_mount_logs=config.LOG_STATIC_MOUNT,
     level=config.LOG_LEVEL,

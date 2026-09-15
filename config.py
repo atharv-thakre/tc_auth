@@ -77,7 +77,6 @@ class Config:
     # ======================================================
 
     LOGGING = os.getenv("LOGGING", "true").lower() == "true"
-    LOG_ENABLED = os.getenv("LOG_ENABLED", str(LOGGING)).lower() == "true"
     LOG_DIR = os.getenv("LOG_DIR")
     LOG_STATIC_MOUNT = os.getenv("LOG_STATIC_MOUNT", "false").lower() == "true"
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
