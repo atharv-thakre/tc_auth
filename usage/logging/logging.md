@@ -23,6 +23,7 @@ Configure via `auth.log.config(...)` or `auth.logging.config(...)`:
 
 ```python
 auth.log.config(
+    logging=True,              # Master toggle (default: True). Set False to disable logging
     logs_dir="logs",           # Base directory (default: 'logs/' in working directory)
     static_mount_logs=False,   # If True, exposes logs/ at GET /logs/*
     level="INFO",              # DEBUG, INFO, WARNING, ERROR, CRITICAL
@@ -30,6 +31,12 @@ auth.log.config(
     redact_sensitive=True,     # Recursively redact tokens, passwords, cookies, secrets
 )
 ```
+
+> [!NOTE]
+> **Disabled Mode (`logging=False` / `enabled=False`)**:
+> - SDK logging calls (`auth.log.info`, `auth.log.error`, etc.) become silent no-ops.
+> - SDK management calls (`auth.log.list_logs()`, `auth.log.create_snapshot()`, etc.) raise `LoggingDisabledError`.
+> - All `/log/*` API endpoints return HTTP `400 Bad Request` with `{"success": false, "message": "Logging is disabled", "error_code": "logging_disabled"}`.
 
 ---
 
@@ -78,21 +85,22 @@ Logged output:
 ## 5. API Endpoints
 
 All management endpoints require administrative privilege (`superadmin` role).
+If logging is disabled via `logging=False`, all endpoints return `400 Bad Request` with `{"success": false, "message": "Logging is disabled", "error_code": "logging_disabled"}`.
 
 Prefix: `/tc-auth/log` (or `/log` depending on `include_routes` prefix).
 
 | Method | Endpoint | Description | Status Code |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/log` | List primary logs & stored snapshots | `200 OK` |
-| `POST` | `/log` | Create a snapshot (`{ "name": "...", "source": "tcauth" }`) | `201 Created` |
-| `GET` | `/log/tcauth` | Get `tcauth.log` records (supports `limit`, `offset`) | `200 OK` |
-| `GET` | `/log/server` | Get `server.log` lines (supports `limit`, `offset`) | `200 OK` |
-| `GET` | `/log/{name}` | Get specific snapshot or primary log content | `200 OK` |
-| `GET` | `/log/tcauth/stream` | Server-Sent Events (SSE) stream for `tcauth.log` | `200 OK` |
-| `GET` | `/log/server/stream` | Server-Sent Events (SSE) stream for `server.log` | `200 OK` |
-| `POST` | `/log/tcauth/reset` | Truncate `tcauth.log` to 0 bytes and continue logging | `200 OK` |
-| `POST` | `/log/server/reset` | Truncate `server.log` to 0 bytes and continue logging | `200 OK` |
-| `DELETE` | `/log/{name}` | Delete snapshot from `logs/store/` | `204 No Content` |
+| `GET` | `/log` | List primary logs & stored snapshots | `200 OK` (`400` if disabled) |
+| `POST` | `/log` | Create a snapshot (`{ "name": "...", "source": "tcauth" }`) | `201 Created` (`400` if disabled) |
+| `GET` | `/log/tcauth` | Get `tcauth.log` records (supports `limit`, `offset`) | `200 OK` (`400` if disabled) |
+| `GET` | `/log/server` | Get `server.log` lines (supports `limit`, `offset`) | `200 OK` (`400` if disabled) |
+| `GET` | `/log/{name}` | Get specific snapshot or primary log content | `200 OK` (`400` if disabled) |
+| `GET` | `/log/tcauth/stream` | Server-Sent Events (SSE) stream for `tcauth.log` | `200 OK` (`400` if disabled) |
+| `GET` | `/log/server/stream` | Server-Sent Events (SSE) stream for `server.log` | `200 OK` (`400` if disabled) |
+| `POST` | `/log/tcauth/reset` | Truncate `tcauth.log` to 0 bytes and continue logging | `200 OK` (`400` if disabled) |
+| `POST` | `/log/server/reset` | Truncate `server.log` to 0 bytes and continue logging | `200 OK` (`400` if disabled) |
+| `DELETE` | `/log/{name}` | Delete snapshot from `logs/store/` | `204 No Content` (`400` if disabled) |
 
 ---
 

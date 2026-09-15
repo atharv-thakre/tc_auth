@@ -625,6 +625,15 @@ class LoggingError(AuthError):
     error_code = "logging_error"
 
 
+class LoggingDisabledError(LoggingError, BadRequestError):
+    """Raised when logging endpoints or operations are invoked while logging is disabled."""
+    status_code = 400
+    error_code = "logging_disabled"
+
+    def __init__(self, message: str = "Logging is disabled"):
+        super().__init__(message)
+
+
 class LoggingNotConfiguredError(LoggingError, ConfigurationError):
     """Raised when logging operations are requested before initialization."""
     status_code = 500

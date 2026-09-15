@@ -32,6 +32,12 @@
 | `EmailNotConfiguredError` | `500` | Email action called without configuring `auth.email.config()`. |
 | `OAuthNotConfiguredError` | `500` | OAuth route called without configuring provider credentials. |
 | `DatabaseError` | `500` | Unexpected database exception occurred. |
+| `LoggingDisabledError` | `400` | Logging is disabled via configuration (`logging=False` or `LOGGING=false`). |
+| `LogSourceInvalidError` | `422` | Invalid log source specified (must be `tcauth` or `server`). |
+| `LogUnsafeNameError` | `422` | Log snapshot name contains illegal characters or path traversal. |
+| `LogSnapshotNotFoundError` | `404` | Requested log snapshot file not found in `logs/store/`. |
+| `LogSnapshotAlreadyExistsError` | `409` | Snapshot with the given name already exists. |
+| `LogCannotDeletePrimaryError` | `403` | Attempted to delete primary active log (`tcauth` or `server`). |
 
 ---
 

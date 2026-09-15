@@ -29,7 +29,15 @@ All `/log` routes require administrative privileges (**`superadmin`** role).
    Include credentials in your request (`credentials: "include"` for `fetch`, or `withCredentials: true` for `EventSource` / `XMLHttpRequest`).
 
 #### Error Statuses:
-- **401 Unauthorized**: User is not logged in or token is missing/expired.
+- **400 Bad Request (`logging_disabled`)**: Logging is globally disabled via configuration (`logging=False` or `LOGGING=false`).
+  ```json
+  {
+    "success": false,
+    "message": "Logging is disabled",
+    "error_code": "logging_disabled"
+  }
+  ```
+- **401 Unauthorized (`token_missing` / `token_expired`)**: User is not logged in or token is missing/expired.
   ```json
   {
     "success": false,
@@ -37,7 +45,7 @@ All `/log` routes require administrative privileges (**`superadmin`** role).
     "error_code": "token_missing"
   }
   ```
-- **403 Forbidden**: User is authenticated but does not possess the `superadmin` role.
+- **403 Forbidden (`role_mismatch`)**: User is authenticated but does not possess the `superadmin` role.
   ```json
   {
     "success": false,
@@ -52,16 +60,16 @@ All `/log` routes require administrative privileges (**`superadmin`** role).
 
 | HTTP Method | Endpoint | Purpose | Success Status | Error Statuses |
 | :--- | :--- | :--- | :--- | :--- |
-| `GET` | `/log` | List primary logs (`tcauth`, `server`) and all snapshots in `logs/store/` | `200 OK` | `401`, `403` |
-| `POST` | `/log` | Create a point-in-time snapshot of `tcauth` or `server` | `201 Created` | `401`, `403`, `409`, `422` |
-| `GET` | `/log/tcauth` | Retrieve JSON records from `tcauth.log` (supports `limit`, `offset`) | `200 OK` | `401`, `403` |
-| `GET` | `/log/server` | Retrieve text lines from `server.log` (supports `limit`, `offset`) | `200 OK` | `401`, `403` |
-| `GET` | `/log/{name}` | Retrieve contents of a specific log or snapshot by name | `200 OK` | `401`, `403`, `404` |
-| `GET` | `/log/tcauth/stream` | Real-time Server-Sent Events (SSE) stream for `tcauth.log` | `200 OK` (`text/event-stream`) | `401`, `403` |
-| `GET` | `/log/server/stream` | Real-time Server-Sent Events (SSE) stream for `server.log` | `200 OK` (`text/event-stream`) | `401`, `403` |
-| `POST` | `/log/tcauth/reset` | Truncate `tcauth.log` to 0 bytes and continue logging | `200 OK` | `401`, `403` |
-| `POST` | `/log/server/reset` | Truncate `server.log` to 0 bytes and continue logging | `200 OK` | `401`, `403` |
-| `DELETE` | `/log/{name}` | Delete a stored snapshot file from `logs/store/` | `204 No Content` | `401`, `403`, `404` |
+| `GET` | `/log` | List primary logs (`tcauth`, `server`) and all snapshots in `logs/store/` | `200 OK` | `400`, `401`, `403` |
+| `POST` | `/log` | Create a point-in-time snapshot of `tcauth` or `server` | `201 Created` | `400`, `401`, `403`, `409`, `422` |
+| `GET` | `/log/tcauth` | Retrieve JSON records from `tcauth.log` (supports `limit`, `offset`) | `200 OK` | `400`, `401`, `403` |
+| `GET` | `/log/server` | Retrieve text lines from `server.log` (supports `limit`, `offset`) | `200 OK` | `400`, `401`, `403` |
+| `GET` | `/log/{name}` | Retrieve contents of a specific log or snapshot by name | `200 OK` | `400`, `401`, `403`, `404` |
+| `GET` | `/log/tcauth/stream` | Real-time Server-Sent Events (SSE) stream for `tcauth.log` | `200 OK` (`text/event-stream`) | `400`, `401`, `403` |
+| `GET` | `/log/server/stream` | Real-time Server-Sent Events (SSE) stream for `server.log` | `200 OK` (`text/event-stream`) | `400`, `401`, `403` |
+| `POST` | `/log/tcauth/reset` | Truncate `tcauth.log` to 0 bytes and continue logging | `200 OK` | `400`, `401`, `403` |
+| `POST` | `/log/server/reset` | Truncate `server.log` to 0 bytes and continue logging | `200 OK` | `400`, `401`, `403` |
+| `DELETE` | `/log/{name}` | Delete a stored snapshot file from `logs/store/` | `204 No Content` | `400`, `401`, `403`, `404` |
 
 ---
 
@@ -348,6 +356,7 @@ Call `auth.log.config(...)` during application startup:
 
 ```python
 auth.log.config(
+    logging=True,              # Master toggle (default: True). If False, logging is completely disabled
     logs_dir="logs",           # Base directory (default: 'logs/' in working directory)
     static_mount_logs=False,   # If True, exposes physical logs at GET /logs/*
     level="INFO",              # Minimum level: DEBUG, INFO, WARNING, ERROR, CRITICAL
@@ -357,11 +366,19 @@ auth.log.config(
 )
 ```
 
+> [!NOTE]
+> When `logging=False` (or `enabled=False`):
+> - All `/log/*` API endpoints immediately return `400 Bad Request` with `error_code: "logging_disabled"`.
+> - SDK logging calls (`auth.log.info`, `auth.log.error`, etc.) are silent no-ops.
+> - Management calls (`auth.log.list_logs()`, `auth.log.create_snapshot()`, etc.) raise `LoggingDisabledError`.
+
 Read the active configuration at any time:
 ```python
 config = auth.log.load()
 print(config)
 # {
+#   "logging": True,
+#   "enabled": True,
 #   "logs_dir": "/path/to/project/logs",
 #   "store_dir": "/path/to/project/logs/store",
 #   "static_mount_logs": False,
@@ -482,6 +499,8 @@ In `.env`:
 # ==========================================================
 # LOGGING CONFIGURATION
 # ==========================================================
+LOGGING=true
+LOG_ENABLED=true
 LOG_DIR=logs
 LOG_STATIC_MOUNT=false
 LOG_LEVEL=INFO
@@ -494,6 +513,7 @@ In `main.py`:
 from config import config
 
 auth.log.config(
+    logging=config.LOG_ENABLED,
     logs_dir=config.LOG_DIR,
     static_mount_logs=config.LOG_STATIC_MOUNT,
     level=config.LOG_LEVEL,

@@ -14,6 +14,7 @@ from typing import Any, AsyncGenerator
 from ..exceptions.error import (
     InvalidConfigError,
     LogCannotDeletePrimaryError,
+    LoggingDisabledError,
     LogSnapshotAlreadyExistsError,
     LogSnapshotNotFoundError,
     LogSourceInvalidError,
@@ -104,6 +105,8 @@ class UvicornLogInterceptor(logging.Handler):
 
     def emit(self, record: logging.LogRecord):
         try:
+            if not getattr(self.log_service, "logging", True):
+                return
             msg = self.format(record)
             self.log_service._append_server_log(msg)
         except Exception:
@@ -142,7 +145,10 @@ class LogService:
         console_output: bool = True,
         redact_sensitive: bool = True,
         custom_redact_keys: list[str] | None = None,
+        logging: bool = True,
+        enabled: bool | None = None,
     ):
+        self.logging = bool(enabled) if enabled is not None else bool(logging)
         self.logs_dir = Path(logs_dir).resolve() if logs_dir else (Path.cwd() / "logs").resolve()
         self.store_dir = self.logs_dir / "store"
         self.static_mount_logs = bool(static_mount_logs)
@@ -213,12 +219,27 @@ class LogService:
             sys.stderr.write(f"[tc-auth LogService] Error setting up Uvicorn logger: {e}\n")
 
     @property
+    def enabled(self) -> bool:
+        return self.logging
+
+    @enabled.setter
+    def enabled(self, value: bool):
+        self.logging = bool(value)
+
+    @property
     def is_configured(self) -> bool:
         return self.logs_dir.exists() and self.store_dir.exists()
+
+    def _check_enabled(self):
+        """Raises LoggingDisabledError if logging is disabled."""
+        if not self.logging:
+            raise LoggingDisabledError("Logging is disabled")
 
     def config(
         self,
         *,
+        logging: bool | None = None,
+        enabled: bool | None = None,
         logs_dir: str | Path | None = None,
         static_mount_logs: bool = False,
         level: str = "INFO",
@@ -229,6 +250,16 @@ class LogService:
         """
         Configures the logging service settings.
         """
+        if logging is not None:
+            if not isinstance(logging, bool):
+                raise InvalidConfigError("Logging", "logging must be a boolean")
+            self.logging = logging
+
+        if enabled is not None:
+            if not isinstance(enabled, bool):
+                raise InvalidConfigError("Logging", "enabled must be a boolean")
+            self.logging = enabled
+
         if logs_dir is not None:
             if not isinstance(logs_dir, (str, Path)) or not str(logs_dir).strip():
                 raise InvalidConfigError("Logging", "logs_dir must be a non-empty string or Path")
@@ -275,6 +306,8 @@ class LogService:
         Returns the current logging configuration.
         """
         return {
+            "logging": self.logging,
+            "enabled": self.logging,
             "logs_dir": str(self.logs_dir),
             "store_dir": str(self.store_dir),
             "static_mount_logs": self.static_mount_logs,
@@ -368,6 +401,9 @@ class LogService:
         """
         Logs an application event in JSONL format to tcauth.log and broadcasts to SSE subscribers.
         """
+        if not self.logging:
+            return
+
         clean_level = level.upper() if isinstance(level, str) and level.upper() in VALID_LEVELS else "INFO"
 
         record: dict[str, Any] = {
@@ -434,6 +470,8 @@ class LogService:
 
     def _append_tcauth_log(self, json_line: str):
         """Thread-safely appends a JSON line to tcauth.log and broadcasts to subscribers."""
+        if not self.logging:
+            return
         try:
             tcauth_path = self.logs_dir / "tcauth.log"
             with self._tcauth_lock:
@@ -447,6 +485,8 @@ class LogService:
 
     def _append_server_log(self, text_line: str):
         """Thread-safely appends a line to server.log and broadcasts to subscribers."""
+        if not self.logging:
+            return
         try:
             server_path = self.logs_dir / "server.log"
             with self._server_lock:
@@ -604,6 +644,7 @@ class LogService:
         """
         Creates a snapshot copy of a primary log file into logs/store/{source}-{name}.log.
         """
+        self._check_enabled()
         src = self._validate_source(source)
         clean_name = self._validate_snapshot_name(name)
         src_path = self._get_primary_path(src)
@@ -642,6 +683,7 @@ class LogService:
         """
         Returns a summary of primary logs and all stored snapshots.
         """
+        self._check_enabled()
         primary_logs = []
         for src in ("tcauth", "server"):
             path = self.logs_dir / f"{src}.log"
@@ -708,6 +750,7 @@ class LogService:
         """
         Retrieves log content for primary logs ('tcauth', 'server') or stored snapshots.
         """
+        self._check_enabled()
         clean_name = name.strip()
         if clean_name.endswith(".log"):
             clean_name = clean_name[:-4]
@@ -797,6 +840,7 @@ class LogService:
         """
         Deletes a stored snapshot. Rejects deletion of primary logs.
         """
+        self._check_enabled()
         clean_name = name.strip()
         if clean_name.endswith(".log"):
             clean_name = clean_name[:-4]
@@ -832,6 +876,7 @@ class LogService:
         """
         Truncates the primary log file to 0 bytes and continues logging.
         """
+        self._check_enabled()
         src = self._validate_source(source)
         path = self._get_primary_path(src)
         lock = self._tcauth_lock if src == "tcauth" else self._server_lock
@@ -907,6 +952,7 @@ class LogService:
         2. Streams newly arriving events in real time.
         3. Sends periodic ping comments to keep connection active.
         """
+        self._check_enabled()
         src = self._validate_source(source)
         loop = asyncio.get_running_loop()
         queue: asyncio.Queue = asyncio.Queue(maxsize=500)

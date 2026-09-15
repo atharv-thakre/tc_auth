@@ -422,3 +422,24 @@ OAuth provider callback endpoint. Exchanges code for token and user profile, han
 - **`GET /tc-auth/otp/?page=1&limit=10`**: Paginated OTP records.
 - **`DELETE /tc-auth/otp/cleanup`**: Deletes all expired OTP records.
 - **`DELETE /tc-auth/otp/clear`**: Purges all OTP records.
+
+---
+
+## 6. Logging & Monitoring Routes (`/log`)
+
+> **All routes require**: `Authorization: Bearer <superadmin_token>` or superadmin cookie.
+> **Disabled Mode**: When logging is disabled (`logging=False` / `LOGGING=false`), all endpoints return `400 Bad Request` with `{"success": false, "message": "Logging is disabled", "error_code": "logging_disabled"}`.
+
+### Log Discovery & Snapshots
+- **`GET /log`**: Summary list of primary logs (`tcauth`, `server`) and all snapshots in `logs/store/`.
+- **`POST /log`**: Create snapshot of `tcauth` or `server` with body `{"name": "string", "source": "tcauth"|"server"}`.
+- **`GET /log/{name}`**: Get log contents by name (supports `limit`, `offset`).
+- **`DELETE /log/{name}`**: Delete snapshot file from `logs/store/` (primary logs cannot be deleted).
+
+### Primary Logs & Stream
+- **`GET /log/tcauth`**: Retrieve parsed JSON records from `tcauth.log` (supports `limit`, `offset`).
+- **`GET /log/server`**: Retrieve lines from `server.log` (supports `limit`, `offset`).
+- **`GET /log/tcauth/stream`**: Real-time SSE stream for `tcauth.log` (`text/event-stream`).
+- **`GET /log/server/stream`**: Real-time SSE stream for `server.log` (`text/event-stream`).
+- **`POST /log/tcauth/reset`**: Truncate `tcauth.log` to 0 bytes and continue logging.
+- **`POST /log/server/reset`**: Truncate `server.log` to 0 bytes and continue logging.

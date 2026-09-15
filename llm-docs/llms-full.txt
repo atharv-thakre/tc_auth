@@ -38,6 +38,7 @@ Base Documentation URL: https://auth.codesena.me/documents
    - https://auth.codesena.me/documents/api/dash_session.md -> Superadmin session inspection, cleanup, and clearing.
    - https://auth.codesena.me/documents/api/dash_otp.md -> Superadmin OTP inspection, creation, revocation, and cleanup.
    - https://auth.codesena.me/documents/api/dash_oauth.md -> Superadmin OAuth link management.
+   - https://auth.codesena.me/documents/api/log_route.md -> Centralized logging routes, snapshots, and SSE streaming.
    - https://auth.codesena.me/documents/api/system_route.md -> System route placeholder.
 
 3. Python SDK Service Guides & Source Files (/documents/sdk/):
@@ -59,6 +60,7 @@ Base Documentation URL: https://auth.codesena.me/documents
    - https://auth.codesena.me/documents/sdk/otp/otp.md & otp.py -> OTPService numeric code guide.
    - https://auth.codesena.me/documents/sdk/session/session.md & session.py -> SessionService database session guide.
    - https://auth.codesena.me/documents/sdk/dashboard/dashboard.md & dashboard.py -> DashboardService system counts guide.
+   - https://auth.codesena.me/documents/sdk/logging/logging.md & logging.py -> LogService centralized logging guide.
 
 ================================================================================
 1. EXECUTIVE SUMMARY & CORE ARCHITECTURAL PRINCIPLES
@@ -276,12 +278,25 @@ Admin Routes (Requires role: superadmin):
 - `DELETE /tc-auth/session/cleanup`: Deletes expired sessions
 - `DELETE /tc-auth/otp/cleanup`: Deletes expired OTP records
 
+Logging Routes (Requires role: superadmin, returns 400 'logging_disabled' if logging=False):
+- `GET /log`: Summary of primary logs (tcauth, server) and stored snapshots
+- `POST /log`: Create point-in-time snapshot of tcauth or server
+- `GET /log/tcauth`: Paginated JSON records from tcauth.log
+- `GET /log/server`: Paginated lines from server.log
+- `GET /log/{name}`: Contents of snapshot or primary log by name
+- `GET /log/tcauth/stream`: Real-time SSE stream for tcauth.log
+- `GET /log/server/stream`: Real-time SSE stream for server.log
+- `POST /log/tcauth/reset`: Truncate tcauth.log to 0 bytes
+- `POST /log/server/reset`: Truncate server.log to 0 bytes
+- `DELETE /log/{name}`: Delete stored snapshot file
+
 ================================================================================
 6. COMPLETE EXCEPTION HIERARCHY & HTTP CODES
 ================================================================================
 All exceptions inherit from `AuthError`:
 - 400 Bad Request:
   - `AuthError` (Base)
+  - `LoggingDisabledError` (Logging is disabled via configuration)
   - `InvalidFieldError` (Invalid field in payload)
   - `InvalidEmailPurposeError` (Purpose not in signup, login, reset, verify)
   - `WeakPasswordError` (Fails 6+ chars, uppercase, lowercase, numeric rules)
@@ -295,31 +310,36 @@ All exceptions inherit from `AuthError`:
 - 403 Forbidden:
   - `PermissionDeniedError` (User does not match required role)
   - `AccountStatusError` (User account status is prohibited)
+  - `LogCannotDeletePrimaryError` (Attempted to delete primary active log)
 - 404 Not Found:
   - `UserNotFoundError` (No user found by ID, UID, email, handle, or phone)
   - `SessionNotFoundError` (Session ID not found in database)
   - `OTPNotFoundError` (No active OTP record found)
   - `OAuthLinkNotFoundError` (OAuth provider link not found)
+  - `LogSnapshotNotFoundError` (Log snapshot file not found in logs/store/)
 - 409 Conflict:
   - `EmailAlreadyExistsError` (Email is already registered)
   - `HandleAlreadyExistsError` (Handle is already registered)
   - `PhoneAlreadyExistsError` (Phone is already registered)
   - `OAuthAlreadyLinkedError` (OAuth provider is already linked to an account)
+  - `LogSnapshotAlreadyExistsError` (Log snapshot already exists)
+- 422 Unprocessable Entity:
+  - `LogSourceInvalidError` (Invalid log source, only 'tcauth' or 'server' allowed)
+  - `LogUnsafeNameError` (Snapshot name contains unsafe characters or path traversal)
 - 500 Internal Server Error:
   - `DatabaseError` (Database query execution failure)
   - `EmailNotConfiguredError` (SMTP service called without configuration)
   - `OAuthNotConfiguredError` (OAuth provider called without credentials)
+  - `LoggingError` (Base logging error)
+  - `LoggingNotConfiguredError` (Logging subsystem not configured)
 - 502 Bad Gateway:
   - `EmailSendError` (SMTP server rejected connection or delivery)
 
 Standard Intercepted Error JSON Response Format:
 ```json
 {
-  "status": false,
-  "error": {
-    "code": "InvalidCredentialsError",
-    "message": "Invalid credentials",
-    "details": null
-  }
+  "success": false,
+  "message": "Error description",
+  "error_code": "error_code_string"
 }
 ```

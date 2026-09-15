@@ -9,11 +9,11 @@ from connect import auth
 #
 # Available methods:
 #
-#     config(logs_dir=None, static_mount_logs=False, level="INFO", console_output=True, redact_sensitive=True)
-#         Configure logging directory, levels, redaction, and static mounting.
+#     config(logging=True, logs_dir=None, static_mount_logs=False, level="INFO", console_output=True, redact_sensitive=True)
+#         Configure logging enabled status, directory, levels, redaction, and static mounting.
 #
 #     load()
-#         Get current logging configuration dictionary.
+#         Get current logging configuration dictionary (includes "logging" / "enabled" keys).
 #
 #     info(event, message, **metadata)
 #     debug(event, message, **metadata)
@@ -54,6 +54,7 @@ print("Current Logging Config:", config)
 # ==========================================================
 
 auth.log.config(
+    logging=True,                    # Master toggle: set False to completely disable logging
     logs_dir="logs",                 # Default: logs/ in application directory
     static_mount_logs=False,         # If True, mounts logs/ statically at /logs
     level="INFO",                    # DEBUG, INFO, WARNING, ERROR, CRITICAL

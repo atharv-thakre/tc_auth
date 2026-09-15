@@ -5,6 +5,7 @@ Base path: `/log` (or `/tc-auth/log` when mounted under main auth router)
 Authentication & Authorization:
 - All routes require administrative privileges (`superadmin` role).
 - Supports `Authorization: Bearer <access_token>` or HttpOnly cookie authentication (`credentials: "include"`).
+- When logging is disabled via configuration (`logging=False`), all endpoints return `400 Bad Request` with `error_code: "logging_disabled"`.
 - Non-admin or unauthenticated requests return `401 Unauthorized` or `403 Forbidden`.
 
 ---
@@ -13,16 +14,16 @@ Authentication & Authorization:
 
 | HTTP Method | Endpoint | Description | Success Status | Error Statuses |
 | :--- | :--- | :--- | :--- | :--- |
-| `GET` | `/log` | List primary logs (`tcauth`, `server`) and all snapshots in `logs/store/` | `200 OK` | `401`, `403` |
-| `POST` | `/log` | Create a point-in-time snapshot of `tcauth` or `server` in `logs/store/` | `201 Created` | `401`, `403`, `409`, `422` |
-| `GET` | `/log/tcauth` | Retrieve parsed JSON records from `tcauth.log` (with pagination) | `200 OK` | `401`, `403` |
-| `GET` | `/log/server` | Retrieve text lines from `server.log` (with pagination) | `200 OK` | `401`, `403` |
-| `GET` | `/log/{name}` | Retrieve contents of a specific log or snapshot by name | `200 OK` | `401`, `403`, `404` |
-| `GET` | `/log/tcauth/stream` | Real-time Server-Sent Events (SSE) stream for `tcauth.log` | `200 OK` (`text/event-stream`) | `401`, `403` |
-| `GET` | `/log/server/stream` | Real-time Server-Sent Events (SSE) stream for `server.log` | `200 OK` (`text/event-stream`) | `401`, `403` |
-| `POST` | `/log/tcauth/reset` | Truncate `tcauth.log` to 0 bytes and continue logging | `200 OK` | `401`, `403` |
-| `POST` | `/log/server/reset` | Truncate `server.log` to 0 bytes and continue logging | `200 OK` | `401`, `403` |
-| `DELETE` | `/log/{name}` | Delete a stored snapshot file from `logs/store/` | `204 No Content` | `401`, `403`, `404` |
+| `GET` | `/log` | List primary logs (`tcauth`, `server`) and all snapshots in `logs/store/` | `200 OK` | `400`, `401`, `403` |
+| `POST` | `/log` | Create a point-in-time snapshot of `tcauth` or `server` in `logs/store/` | `201 Created` | `400`, `401`, `403`, `409`, `422` |
+| `GET` | `/log/tcauth` | Retrieve parsed JSON records from `tcauth.log` (with pagination) | `200 OK` | `400`, `401`, `403` |
+| `GET` | `/log/server` | Retrieve text lines from `server.log` (with pagination) | `200 OK` | `400`, `401`, `403` |
+| `GET` | `/log/{name}` | Retrieve contents of a specific log or snapshot by name | `200 OK` | `400`, `401`, `403`, `404` |
+| `GET` | `/log/tcauth/stream` | Real-time Server-Sent Events (SSE) stream for `tcauth.log` | `200 OK` (`text/event-stream`) | `400`, `401`, `403` |
+| `GET` | `/log/server/stream` | Real-time Server-Sent Events (SSE) stream for `server.log` | `200 OK` (`text/event-stream`) | `400`, `401`, `403` |
+| `POST` | `/log/tcauth/reset` | Truncate `tcauth.log` to 0 bytes and continue logging | `200 OK` | `400`, `401`, `403` |
+| `POST` | `/log/server/reset` | Truncate `server.log` to 0 bytes and continue logging | `200 OK` | `400`, `401`, `403` |
+| `DELETE` | `/log/{name}` | Delete a stored snapshot file from `logs/store/` | `204 No Content` | `400`, `401`, `403`, `404` |
 
 ---
 

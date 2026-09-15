@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query, Request, Response, status
 from fastapi.responses import StreamingResponse
 
+from ..exceptions.error import LoggingDisabledError
 from ..schema.log import CreateSnapshotRequest
 from ..service.log_service import LogService
 
@@ -15,7 +16,15 @@ class LogRoutes:
         self.log_service = log_service
         self.role_deps = role_deps
 
-        self.router = APIRouter(prefix="/log", tags=["Log Management"])
+        def check_logging_enabled():
+            if not getattr(self.log_service, "logging", True):
+                raise LoggingDisabledError("Logging is disabled")
+
+        self.router = APIRouter(
+            prefix="/log",
+            tags=["Log Management"],
+            dependencies=[Depends(check_logging_enabled)],
+        )
         self.register()
 
     def register(self):

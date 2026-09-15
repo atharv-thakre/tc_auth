@@ -36,6 +36,7 @@ auth = Auth(engine=engine, app=None)
 | `auth.role` | `RoleDeps` | Role-based access control guards (`require`, `allow`, `block`) |
 | `auth.status` | `StatusDeps` | Account status access control guards (`require`, `allow`, `block`) |
 | `auth.dashboard` | `DashboardService` | System counts and administrative statistics |
+| `auth.log` / `auth.logging` | `LogService` | Centralized JSONL & server logging, redaction, snapshots, SSE stream |
 
 ### Core Methods
 - **`auth.init() -> None`**
@@ -243,3 +244,45 @@ Explicitly sends an HTML email with a one-click Magic Link button.
 - `auth.email.send_verify_email(email, frontend_url=None)`
 - `auth.email.send_reset_otp(email, frontend_url=None)`
 - `auth.email.send_signup_otp(email, frontend_url=None)`
+
+---
+
+## 10. `auth.log` / `auth.logging` (`LogService`)
+
+### `config(logging: bool = True, logs_dir: str | Path | None = None, static_mount_logs: bool = False, level: str = "INFO", console_output: bool = True, redact_sensitive: bool = True, custom_redact_keys: list[str] | None = None) -> dict`
+Configures the centralized logging subsystem.
+- **`logging`** (*bool*, default `True`): Master toggle. If `False`, SDK logging calls are no-ops, programmatic inspection calls raise `LoggingDisabledError`, and all `/log/*` HTTP endpoints return `400 Bad Request` (`error_code: "logging_disabled"`).
+
+### `load() -> dict`
+Returns the active configuration dictionary including `"logging"`, `"enabled"`, `"logs_dir"`, `"store_dir"`, `"level"`, etc.
+
+### `info(event: str, message: str, **kwargs) -> None`
+### `debug(event: str, message: str, **kwargs) -> None`
+### `warning(event: str, message: str, **kwargs) -> None`
+### `error(event: str, message: str, error=None, exc_info=None, **kwargs) -> None`
+### `critical(event: str, message: str, error=None, exc_info=None, **kwargs) -> None`
+Writes a structured, auto-redacted JSON record to `tcauth.log` and broadcasts to SSE subscribers.
+
+### `create_snapshot(name: str, source: str) -> dict`
+Creates a copy of `tcauth` or `server` log into `logs/store/{source}-{name}.log`.
+- **Raises**: `LoggingDisabledError`, `LogSnapshotAlreadyExistsError`, `LogSourceInvalidError`, `LogUnsafeNameError`.
+
+### `list_logs() -> dict`
+Returns summary metadata for primary logs and all saved snapshots in `logs/store/`.
+- **Raises**: `LoggingDisabledError`.
+
+### `get_log_content(name: str, limit: int | None = None, offset: int = 0) -> dict`
+Retrieves paginated JSON records or string lines from a primary log or stored snapshot.
+- **Raises**: `LoggingDisabledError`, `LogSnapshotNotFoundError`.
+
+### `reset_log(source: str) -> dict`
+Truncates a primary log file (`tcauth` or `server`) to 0 bytes and continues logging.
+- **Raises**: `LoggingDisabledError`, `LogSourceInvalidError`.
+
+### `delete_snapshot(name: str) -> dict`
+Deletes a snapshot file from `logs/store/`. Primary active logs cannot be deleted.
+- **Raises**: `LoggingDisabledError`, `LogCannotDeletePrimaryError`, `LogSnapshotNotFoundError`.
+
+### `stream_logs(source: str, request: Request, tail_count: int = 10) -> AsyncGenerator[str, None]`
+Async generator yielding initial tail records followed by live SSE events and keep-alive pings.
+- **Raises**: `LoggingDisabledError`, `LogSourceInvalidError`.

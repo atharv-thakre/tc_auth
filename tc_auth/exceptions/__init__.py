@@ -65,6 +65,7 @@ from .error import (
     OAuthProviderError,
     # Category 8: Logging Subsystem
     LoggingError,
+    LoggingDisabledError,
     LoggingNotConfiguredError,
     LogSourceInvalidError,
     LogUnsafeNameError,
@@ -141,6 +142,7 @@ __all__ = [
     "OAuthProviderError",
     # Category 8: Logging Subsystem
     "LoggingError",
+    "LoggingDisabledError",
     "LoggingNotConfiguredError",
     "LogSourceInvalidError",
     "LogUnsafeNameError",

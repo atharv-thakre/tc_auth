@@ -37,6 +37,7 @@
 - [OAuth Provider Routes](https://auth.codesena.me/documents/api/oauth_route.md): Google, GitHub, Discord `/login` and `/callback` redirect endpoints.
 - [OAuth Frontend Integration](https://auth.codesena.me/documents/api/oauth_integration.md): Frontend handling for redirects, popups, and callback URLs.
 - [Frontend Token Usage Guide](https://auth.codesena.me/documents/api/token_usage_guide.md): Universal guide for Single & Dual-token modes with Axios interceptors.
+- [Logging & Monitoring Routes](https://auth.codesena.me/documents/api/log_route.md): Primary logs, snapshots, resets, and SSE streaming.
 - [Dashboard & Config Routes](https://auth.codesena.me/documents/api/dashboard_route.md): Health pulse probe, dynamic config loading & live updates.
 - [Admin Account Routes](https://auth.codesena.me/documents/api/dash_account.md): Superadmin account CRUD, search, and pagination.
 - [Admin Session Routes](https://auth.codesena.me/documents/api/dash_session.md): Superadmin session inspection and token cleanup.
@@ -62,3 +63,4 @@
 - [OTP Service](https://auth.codesena.me/documents/sdk/otp/otp.md) ([Code](https://auth.codesena.me/documents/sdk/otp/otp.py)): 6-digit numeric OTP generation, verification, and revocation.
 - [Session Service](https://auth.codesena.me/documents/sdk/session/session.md) ([Code](https://auth.codesena.me/documents/sdk/session/session.py)): Database session creation, verification, and logout everywhere.
 - [Dashboard Service](https://auth.codesena.me/documents/sdk/dashboard/dashboard.md) ([Code](https://auth.codesena.me/documents/sdk/dashboard/dashboard.py)): System statistics and table counts.
+- [Logging Service](https://auth.codesena.me/documents/sdk/logging/logging.md) ([Code](https://auth.codesena.me/documents/sdk/logging/logging.py)): JSONL logging, sensitive redaction, snapshots, and SSE streaming.
