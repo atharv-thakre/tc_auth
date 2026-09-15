@@ -28,7 +28,12 @@ auth.log.config(
     static_mount_logs=False,   # If True, exposes logs/ at GET /logs/*
     level="INFO",              # DEBUG, INFO, WARNING, ERROR, CRITICAL
     console_output=True,       # Echo JSONL events to stdout
+    capture_terminal=False,    # If True, captures all process print() calls into server.log
     redact_sensitive=True,     # Recursively redact tokens, passwords, cookies, secrets
+    redact_patterns=[          # List of regular expression patterns to mask as [REDACTED]
+        r"(?i)authorization:\s*bearer\s+\S+",
+        r"(?i)api[_-]?key\s*[:=]\s*\S+",
+    ],
 )
 ```
 

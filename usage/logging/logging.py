@@ -9,8 +9,8 @@ from connect import auth
 #
 # Available methods:
 #
-#     config(logging=True, logs_dir=None, static_mount_logs=False, level="INFO", console_output=True, redact_sensitive=True)
-#         Configure logging enabled status, directory, levels, redaction, and static mounting.
+#     config(logging=True, logs_dir=None, static_mount_logs=False, level="INFO", console_output=True, capture_terminal=False, redact_sensitive=True, redact_patterns=None)
+#         Configure logging enabled status, directory, levels, redaction, terminal capture, and static mounting.
 #
 #     load()
 #         Get current logging configuration dictionary (includes "logging" key).
@@ -59,7 +59,12 @@ auth.log.config(
     static_mount_logs=False,         # If True, mounts logs/ statically at /logs
     level="INFO",                    # DEBUG, INFO, WARNING, ERROR, CRITICAL
     console_output=True,             # Echo application logs to stdout
+    capture_terminal=True,           # Capture all terminal print() calls into server.log
     redact_sensitive=True,           # Automatically redact passwords, tokens, secrets, cookies
+    redact_patterns=[                # Custom regular expressions to mask as [REDACTED]
+        r"(?i)authorization:\s*bearer\s+\S+",
+        r"(?i)api[_-]?key\s*[:=]\s*\S+",
+    ],
 )
 
 

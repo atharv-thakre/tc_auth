@@ -76,12 +76,26 @@ class Config:
     # LOGGING
     # ======================================================
 
-    LOGGING = os.getenv("LOGGING", "true").lower() == "true"
+    LOGGING = os.getenv("LOGGING", os.getenv("LOG_ENABLED", "true")).lower() == "true"
+    LOG_ENABLED = LOGGING
     LOG_DIR = os.getenv("LOG_DIR")
     LOG_STATIC_MOUNT = os.getenv("LOG_STATIC_MOUNT", "false").lower() == "true"
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
     LOG_CONSOLE_OUTPUT = os.getenv("LOG_CONSOLE_OUTPUT", "true").lower() == "true"
+    LOG_CAPTURE_TERMINAL = os.getenv("LOG_CAPTURE_TERMINAL", "false").lower() == "true"
     LOG_REDACT_SENSITIVE = os.getenv("LOG_REDACT_SENSITIVE", "true").lower() == "true"
+
+    _raw_patterns = os.getenv("LOG_REDACT_PATTERNS")
+    if _raw_patterns:
+        try:
+            import json
+            LOG_REDACT_PATTERNS = json.loads(_raw_patterns)
+            if not isinstance(LOG_REDACT_PATTERNS, list):
+                LOG_REDACT_PATTERNS = [p.strip() for p in _raw_patterns.split(",") if p.strip()]
+        except Exception:
+            LOG_REDACT_PATTERNS = [p.strip() for p in _raw_patterns.split(",") if p.strip()]
+    else:
+        LOG_REDACT_PATTERNS = []
 
 
 config = Config()

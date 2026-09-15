@@ -93,6 +93,92 @@ BASIC_AUTH_PATTERN = re.compile(r"Basic\s+([A-Za-z0-9+/=]+)", re.IGNORECASE)
 NAME_VALIDATION_REGEX = re.compile(r"^[a-zA-Z0-9_-]+$")
 
 
+_ORIGINAL_STDOUT = sys.__stdout__ if sys.__stdout__ is not None else sys.stdout
+_ORIGINAL_STDERR = sys.__stderr__ if sys.__stderr__ is not None else sys.stderr
+
+
+class TerminalStreamInterceptor:
+    """
+    Process-level stream interceptor for sys.stdout and sys.stderr.
+    1. Forwards all writes directly to the original underlying OS stream (console terminal).
+    2. Buffers and captures complete lines into the server.log pipeline with regex redaction.
+    """
+
+    def __init__(self, original_stream, log_service: "LogService", stream_name: str = "stdout"):
+        self.original_stream = original_stream
+        self.log_service = log_service
+        self.stream_name = stream_name
+        self._buffer = ""
+        self._lock = threading.Lock()
+
+    def write(self, s: str) -> int:
+        if not s:
+            return 0
+        # 1. Always write raw output directly to the original terminal stream immediately
+        try:
+            self.original_stream.write(s)
+            self.original_stream.flush()
+        except Exception:
+            pass
+
+        # 2. Capture and process lines for server log if capture_terminal and logging are enabled
+        try:
+            if getattr(self.log_service, "logging", True) and getattr(self.log_service, "capture_terminal", False):
+                with self._lock:
+                    self._buffer += str(s)
+                    while "\n" in self._buffer:
+                        line, self._buffer = self._buffer.split("\n", 1)
+                        clean_line = line.rstrip("\r")
+                        if clean_line:
+                            self.log_service._append_server_log(clean_line)
+        except Exception:
+            pass
+
+        return len(s)
+
+    def flush(self):
+        try:
+            self.original_stream.flush()
+        except Exception:
+            pass
+        try:
+            if getattr(self.log_service, "logging", True) and getattr(self.log_service, "capture_terminal", False):
+                with self._lock:
+                    if self._buffer:
+                        clean_line = self._buffer.rstrip("\r\n")
+                        self._buffer = ""
+                        if clean_line:
+                            self.log_service._append_server_log(clean_line)
+        except Exception:
+            pass
+
+    def fileno(self):
+        return getattr(self.original_stream, "fileno", lambda: 1)()
+
+    def isatty(self):
+        return getattr(self.original_stream, "isatty", lambda: False)()
+
+    def readable(self):
+        return getattr(self.original_stream, "readable", lambda: False)()
+
+    def writable(self):
+        return getattr(self.original_stream, "writable", lambda: True)()
+
+    def seekable(self):
+        return getattr(self.original_stream, "seekable", lambda: False)()
+
+    @property
+    def encoding(self):
+        return getattr(self.original_stream, "encoding", "utf-8")
+
+    @property
+    def errors(self):
+        return getattr(self.original_stream, "errors", "strict")
+
+    def __getattr__(self, name):
+        return getattr(self.original_stream, name)
+
+
 class UvicornLogInterceptor(logging.Handler):
     """
     Custom logging handler attached to Uvicorn loggers to mirror terminal output
@@ -107,6 +193,8 @@ class UvicornLogInterceptor(logging.Handler):
         try:
             if not getattr(self.log_service, "logging", True):
                 return
+            if getattr(self.log_service, "capture_terminal", False):
+                return
             msg = self.format(record)
             self.log_service._append_server_log(msg)
         except Exception:
@@ -120,7 +208,7 @@ class LogService:
     """
     Centralized logging service for tc-auth.
     Manages JSONL application logs (tcauth.log), Uvicorn server logs (server.log),
-    snapshot storage (logs/store/), redaction, resetting, and real-time SSE streaming.
+    snapshot storage (logs/store/), terminal capture, regex redaction, resetting, and SSE streaming.
     """
 
     @classmethod
@@ -137,25 +225,41 @@ class LogService:
         global _current_log_service
         _current_log_service = service
 
+    @staticmethod
+    def _compile_patterns(patterns: list[str] | None) -> tuple[list[str], list[re.Pattern]]:
+        if patterns is None:
+            return [], []
+        if not isinstance(patterns, list) or not all(isinstance(p, str) for p in patterns):
+            raise InvalidConfigError("Logging", "redact_patterns must be a list of string regular expressions")
+        compiled = []
+        for p in patterns:
+            try:
+                compiled.append(re.compile(p))
+            except re.error as e:
+                raise InvalidConfigError("Logging", f"Invalid regular expression pattern '{p}': {e}")
+        return list(patterns), compiled
+
     def __init__(
         self,
         logs_dir: str | Path | None = None,
         static_mount_logs: bool = False,
         level: str = "INFO",
         console_output: bool = True,
+        capture_terminal: bool = False,
         redact_sensitive: bool = True,
-        custom_redact_keys: list[str] | None = None,
+        redact_patterns: list[str] | None = None,
         logging: bool = True,
+        enabled: bool | None = None,
     ):
-        self.logging = bool(logging)
+        self.logging = bool(enabled) if enabled is not None else bool(logging)
         self.logs_dir = Path(logs_dir).resolve() if logs_dir else (Path.cwd() / "logs").resolve()
         self.store_dir = self.logs_dir / "store"
         self.static_mount_logs = bool(static_mount_logs)
         self.level = level.upper() if isinstance(level, str) and level.upper() in VALID_LEVELS else "INFO"
         self.console_output = bool(console_output)
+        self.capture_terminal = bool(capture_terminal)
         self.redact_sensitive = bool(redact_sensitive)
-        self.custom_redact_keys = set(k.lower() for k in custom_redact_keys) if custom_redact_keys else set()
-        self._all_sensitive_keys = DEFAULT_SENSITIVE_KEYS.union(self.custom_redact_keys)
+        self.redact_patterns, self.compiled_redact_patterns = self._compile_patterns(redact_patterns)
 
         # Thread safety locks
         self._tcauth_lock = threading.Lock()
@@ -174,6 +278,11 @@ class LogService:
         # Attach Uvicorn logging interceptor
         self._uvicorn_handler: UvicornLogInterceptor | None = None
         self._setup_uvicorn_logging()
+
+        # Terminal stream interception
+        self._stdout_interceptor: TerminalStreamInterceptor | None = None
+        self._stderr_interceptor: TerminalStreamInterceptor | None = None
+        self._apply_terminal_capture()
 
         # Set as current active logger
         LogService.set_current(self)
@@ -197,7 +306,7 @@ class LogService:
             if not server_path.exists():
                 server_path.touch(exist_ok=True)
         except Exception as e:
-            sys.stderr.write(f"[tc-auth LogService] Error creating log directories: {e}\n")
+            _ORIGINAL_STDERR.write(f"[tc-auth LogService] Error creating log directories: {e}\n")
 
     def _setup_uvicorn_logging(self):
         """Hooks into Uvicorn loggers so standard server output is written to server.log."""
@@ -215,7 +324,22 @@ class LogService:
                     if self._uvicorn_handler not in target_logger.handlers:
                         target_logger.addHandler(self._uvicorn_handler)
         except Exception as e:
-            sys.stderr.write(f"[tc-auth LogService] Error setting up Uvicorn logger: {e}\n")
+            _ORIGINAL_STDERR.write(f"[tc-auth LogService] Error setting up Uvicorn logger: {e}\n")
+
+    def _apply_terminal_capture(self):
+        """Starts or stops process-level stdout/stderr terminal capture."""
+        if self.capture_terminal and self.logging:
+            if not isinstance(sys.stdout, TerminalStreamInterceptor):
+                self._stdout_interceptor = TerminalStreamInterceptor(_ORIGINAL_STDOUT, self, "stdout")
+                sys.stdout = self._stdout_interceptor
+            if not isinstance(sys.stderr, TerminalStreamInterceptor):
+                self._stderr_interceptor = TerminalStreamInterceptor(_ORIGINAL_STDERR, self, "stderr")
+                sys.stderr = self._stderr_interceptor
+        else:
+            if isinstance(sys.stdout, TerminalStreamInterceptor):
+                sys.stdout = _ORIGINAL_STDOUT
+            if isinstance(sys.stderr, TerminalStreamInterceptor):
+                sys.stderr = _ORIGINAL_STDERR
 
     @property
     def is_configured(self) -> bool:
@@ -230,12 +354,14 @@ class LogService:
         self,
         *,
         logging: bool | None = None,
+        enabled: bool | None = None,
         logs_dir: str | Path | None = None,
         static_mount_logs: bool | None = None,
         level: str | None = None,
         console_output: bool | None = None,
+        capture_terminal: bool | None = None,
         redact_sensitive: bool | None = None,
-        custom_redact_keys: list[str] | None = None,
+        redact_patterns: list[str] | None = None,
     ) -> dict:
         """
         Configures the logging service settings.
@@ -244,6 +370,11 @@ class LogService:
             if not isinstance(logging, bool):
                 raise InvalidConfigError("Logging", "logging must be a boolean")
             self.logging = logging
+
+        if enabled is not None:
+            if not isinstance(enabled, bool):
+                raise InvalidConfigError("Logging", "enabled must be a boolean")
+            self.logging = enabled
 
         if logs_dir is not None:
             if not isinstance(logs_dir, (str, Path)) or not str(logs_dir).strip():
@@ -270,19 +401,24 @@ class LogService:
                 raise InvalidConfigError("Logging", "console_output must be a boolean")
             self.console_output = console_output
 
+        if capture_terminal is not None:
+            if not isinstance(capture_terminal, bool):
+                raise InvalidConfigError("Logging", "capture_terminal must be a boolean")
+            self.capture_terminal = capture_terminal
+
         if redact_sensitive is not None:
             if not isinstance(redact_sensitive, bool):
                 raise InvalidConfigError("Logging", "redact_sensitive must be a boolean")
             self.redact_sensitive = redact_sensitive
 
-        if custom_redact_keys is not None:
-            if not isinstance(custom_redact_keys, list) or not all(isinstance(k, str) for k in custom_redact_keys):
-                raise InvalidConfigError("Logging", "custom_redact_keys must be a list of strings")
-            self.custom_redact_keys = set(k.lower() for k in custom_redact_keys)
-            self._all_sensitive_keys = DEFAULT_SENSITIVE_KEYS.union(self.custom_redact_keys)
+        if redact_patterns is not None:
+            raw_patterns, compiled = self._compile_patterns(redact_patterns)
+            self.redact_patterns = raw_patterns
+            self.compiled_redact_patterns = compiled
 
         self._init_filesystem()
         self._setup_uvicorn_logging()
+        self._apply_terminal_capture()
 
         return {
             "success": True,
@@ -300,21 +436,36 @@ class LogService:
             "static_mount_logs": self.static_mount_logs,
             "level": self.level,
             "console_output": self.console_output,
+            "capture_terminal": self.capture_terminal,
             "redact_sensitive": self.redact_sensitive,
-            "custom_redact_keys": sorted(list(self.custom_redact_keys)),
+            "redact_patterns": self.redact_patterns,
         }
 
     # ==========================================================
     # SENSITIVE DATA REDACTION
     # ==========================================================
 
+    def redact_text(self, text: str) -> str:
+        """
+        Applies regex redaction rules to free-text strings.
+        Built-in token patterns are applied if redact_sensitive=True.
+        Custom redact_patterns regexes are ALWAYS applied if configured.
+        """
+        if not isinstance(text, str):
+            return text
+        result = text
+        if self.redact_sensitive:
+            result = JWT_PATTERN.sub("[REDACTED]", result)
+            result = BEARER_PATTERN.sub("Bearer [REDACTED]", result)
+            result = BASIC_AUTH_PATTERN.sub("Basic [REDACTED]", result)
+        for pattern in self.compiled_redact_patterns:
+            result = pattern.sub("[REDACTED]", result)
+        return result
+
     def redact(self, value: Any) -> Any:
         """
-        Recursively redacts sensitive keys and values from dictionaries, lists, strings, and query params.
+        Recursively redacts sensitive keys and regex patterns from dictionaries, lists, and strings.
         """
-        if not self.redact_sensitive:
-            return value
-
         if isinstance(value, dict):
             redacted_dict = {}
             for k, v in value.items():
@@ -324,8 +475,8 @@ class LogService:
                 # If key is explicitly marked as safe metadata, recursively redact its children
                 if k_lower in SAFE_METADATA_KEYS:
                     redacted_dict[k] = self.redact(v)
-                elif (
-                    k_lower in self._all_sensitive_keys
+                elif self.redact_sensitive and (
+                    k_lower in DEFAULT_SENSITIVE_KEYS
                     or any(
                         s in k_lower
                         for s in ("password", "secret", "private_key", "api_key", "apikey", "csrf_token")
@@ -340,7 +491,6 @@ class LogService:
                     redacted_dict[k] = self.redact(v)
             return redacted_dict
 
-
         if isinstance(value, list):
             return [self.redact(item) for item in value]
 
@@ -351,11 +501,7 @@ class LogService:
             return {self.redact(item) for item in value}
 
         if isinstance(value, str):
-            # Check for JWT pattern
-            val = JWT_PATTERN.sub("[REDACTED]", value)
-            val = BEARER_PATTERN.sub("Bearer [REDACTED]", val)
-            val = BASIC_AUTH_PATTERN.sub("Basic [REDACTED]", val)
-            return val
+            return self.redact_text(value)
 
         return value
 
@@ -448,10 +594,11 @@ class LogService:
         # Append to tcauth.log safely
         self._append_tcauth_log(json_line)
 
-        # Output to console if enabled
+        # Output to console if enabled (directly to original terminal to avoid re-capturing into server.log)
         if self.console_output:
             try:
-                print(f"[tc-auth] {clean_level} [{event}]: {message}")
+                _ORIGINAL_STDOUT.write(f"[tc-auth] {clean_level} [{event}]: {message}\n")
+                _ORIGINAL_STDOUT.flush()
             except Exception:
                 pass
 
@@ -466,7 +613,7 @@ class LogService:
                     f.write(json_line + "\n")
                     f.flush()
         except Exception as e:
-            sys.stderr.write(f"[tc-auth LogService] Failed to write to tcauth.log: {e}\n")
+            _ORIGINAL_STDERR.write(f"[tc-auth LogService] Failed to write to tcauth.log: {e}\n")
 
         self._broadcast_sse("tcauth", json_line)
 
@@ -474,16 +621,17 @@ class LogService:
         """Thread-safely appends a line to server.log and broadcasts to subscribers."""
         if not self.logging:
             return
+        sanitized_line = self.redact_text(text_line)
         try:
             server_path = self.logs_dir / "server.log"
             with self._server_lock:
                 with open(server_path, "a", encoding="utf-8") as f:
-                    f.write(text_line + "\n")
+                    f.write(sanitized_line + "\n")
                     f.flush()
         except Exception as e:
-            sys.stderr.write(f"[tc-auth LogService] Failed to write to server.log: {e}\n")
+            _ORIGINAL_STDERR.write(f"[tc-auth LogService] Failed to write to server.log: {e}\n")
 
-        self._broadcast_sse("server", text_line)
+        self._broadcast_sse("server", sanitized_line)
 
     # ==========================================================
     # CONVENIENCE LOGGING METHODS

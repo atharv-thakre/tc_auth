@@ -249,9 +249,11 @@ Explicitly sends an HTML email with a one-click Magic Link button.
 
 ## 10. `auth.log` / `auth.logging` (`LogService`)
 
-### `config(logging: bool = True, logs_dir: str | Path | None = None, static_mount_logs: bool = False, level: str = "INFO", console_output: bool = True, redact_sensitive: bool = True, custom_redact_keys: list[str] | None = None) -> dict`
+### `config(logging: bool = True, logs_dir: str | Path | None = None, static_mount_logs: bool = False, level: str = "INFO", console_output: bool = True, capture_terminal: bool = False, redact_sensitive: bool = True, redact_patterns: list[str] | None = None) -> dict`
 Configures the centralized logging subsystem.
 - **`logging`** (*bool*, default `True`): Master toggle. If `False`, SDK logging calls are no-ops, programmatic inspection calls raise `LoggingDisabledError`, and all `/log/*` HTTP endpoints return `400 Bad Request` (`error_code: "logging_disabled"`).
+- **`capture_terminal`** (*bool*, default `False`): When `True`, all process `print()` outputs are captured into `server.log`.
+- **`redact_patterns`** (*list[str]*, optional): Regular expression patterns to sanitize from logs and terminal prints.
 
 ### `load() -> dict`
 Returns the active configuration dictionary including `"logging"`, `"logs_dir"`, `"store_dir"`, `"level"`, etc.

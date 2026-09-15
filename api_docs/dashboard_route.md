@@ -89,8 +89,9 @@ Response:
     "static_mount_logs": false,
     "level": "INFO",
     "console_output": true,
+    "capture_terminal": false,
     "redact_sensitive": true,
-    "custom_redact_keys": []
+    "redact_patterns": []
   }
 }
 ```
@@ -301,20 +302,25 @@ Body:
   "logging": true,
   "level": "INFO",
   "console_output": true,
+  "capture_terminal": true,
   "redact_sensitive": true,
+  "redact_patterns": [
+    "(?i)authorization:\\s*bearer\\s+\\S+",
+    "(?i)api[_-]?key\\s*[:=]\\s*\\S+"
+  ],
   "static_mount_logs": false,
-  "logs_dir": "/path/to/logs",
-  "custom_redact_keys": ["custom_secret", "tenant_api_key"]
+  "logs_dir": "/path/to/logs"
 }
 ```
 
 - `logging` (optional): Boolean. Globally enable (`true`) or disable (`false`) the logging subsystem.
 - `level` (optional): String (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`). Log verbosity threshold.
 - `console_output` (optional): Boolean. Mirror logs to terminal/stdout.
+- `capture_terminal` (optional): Boolean. When `true`, all process `print()` outputs are captured into `server.log`.
 - `redact_sensitive` (optional): Boolean. Automatically sanitize tokens, passwords, cookies, and secret keys.
+- `redact_patterns` (optional): Array of regex strings. Custom regular expressions to mask as `[REDACTED]`.
 - `static_mount_logs` (optional): Boolean. Expose `logs/` via static file mount at `/logs`.
 - `logs_dir` (optional): String. Custom directory path where log files are stored.
-- `custom_redact_keys` (optional): Array of strings. Additional JSON keys to redact in application logs.
 
 Response:
 

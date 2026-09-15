@@ -25,6 +25,10 @@ class LoggingConfig(BaseModel):
         default=None,
         description="Whether logging is globally enabled or disabled.",
     )
+    enabled: bool | None = Field(
+        default=None,
+        description="Alias for logging toggle.",
+    )
     logs_dir: str | None = Field(
         default=None,
         description="Base directory for log files. Defaults to 'logs/' in working directory.",
@@ -41,12 +45,16 @@ class LoggingConfig(BaseModel):
         default=None,
         description="Whether to echo application logs to the console/stdout",
     )
+    capture_terminal: bool | None = Field(
+        default=None,
+        description="Whether to capture all terminal print() statements to server.log",
+    )
     redact_sensitive: bool | None = Field(
         default=None,
         description="Whether to automatically redact sensitive fields (tokens, passwords, cookies)",
     )
-    custom_redact_keys: list[str] | None = Field(
+    redact_patterns: list[str] | None = Field(
         default=None,
-        description="List of custom field names to redact in logs",
+        description="List of custom regex patterns to redact in application logs and captured prints",
     )
 
