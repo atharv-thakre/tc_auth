@@ -96,5 +96,5 @@ class DashboardRoute:
         def configure_logging(config: LoggingConfig, user=current):
             if not self.log_service:
                 return {"success": False, "message": "Logging service is not available"}
-            return self.log_service.config(**config.model_dump())
+            return self.log_service.config(**config.model_dump(exclude_unset=True))
 

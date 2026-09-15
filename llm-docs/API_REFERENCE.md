@@ -407,6 +407,8 @@ OAuth provider callback endpoint. Exchanges code for token and user profile, han
 - **`POST /tc-auth/config/github`**: Updates GitHub OAuth credentials.
 - **`POST /tc-auth/config/discord`**: Updates Discord OAuth credentials.
 - **`POST /tc-auth/config/jwt`**: Updates JWT secret, algorithm, and token durations.
+- **`POST /tc-auth/config/cookie`**: Updates cookie-based authentication settings.
+- **`POST /tc-auth/config/logging`**: Updates logging configuration (toggle, level, console output, sensitive redaction, logs dir) live.
 
 ### Admin Account Management (`/tc-auth/account`)
 - **`GET /tc-auth/account/?page=1&limit=10`**: Paginated accounts list.

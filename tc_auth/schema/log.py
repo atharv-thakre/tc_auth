@@ -21,23 +21,36 @@ class CreateSnapshotRequest(BaseModel):
 class LoggingConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    logging: bool | None = Field(
+        default=None,
+        description="Whether logging is globally enabled or disabled.",
+    )
+    enabled: bool | None = Field(
+        default=None,
+        description="Alias for logging toggle.",
+    )
     logs_dir: str | None = Field(
         default=None,
         description="Base directory for log files. Defaults to 'logs/' in working directory.",
     )
-    static_mount_logs: bool = Field(
-        default=False,
+    static_mount_logs: bool | None = Field(
+        default=None,
         description="Whether to expose the logs directory via a static mount at /logs",
     )
-    level: str = Field(
-        default="INFO",
+    level: str | None = Field(
+        default=None,
         description="Logging level threshold (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
     )
-    console_output: bool = Field(
-        default=True,
+    console_output: bool | None = Field(
+        default=None,
         description="Whether to echo application logs to the console/stdout",
     )
-    redact_sensitive: bool = Field(
-        default=True,
+    redact_sensitive: bool | None = Field(
+        default=None,
         description="Whether to automatically redact sensitive fields (tokens, passwords, cookies)",
     )
+    custom_redact_keys: list[str] | None = Field(
+        default=None,
+        description="List of custom field names to redact in logs",
+    )
+

@@ -241,10 +241,10 @@ class LogService:
         logging: bool | None = None,
         enabled: bool | None = None,
         logs_dir: str | Path | None = None,
-        static_mount_logs: bool = False,
-        level: str = "INFO",
-        console_output: bool = True,
-        redact_sensitive: bool = True,
+        static_mount_logs: bool | None = None,
+        level: str | None = None,
+        console_output: bool | None = None,
+        redact_sensitive: bool | None = None,
         custom_redact_keys: list[str] | None = None,
     ) -> dict:
         """
@@ -267,31 +267,34 @@ class LogService:
             self.logs_dir = new_logs_dir
             self.store_dir = self.logs_dir / "store"
 
-        if not isinstance(static_mount_logs, bool):
-            raise InvalidConfigError("Logging", "static_mount_logs must be a boolean")
+        if static_mount_logs is not None:
+            if not isinstance(static_mount_logs, bool):
+                raise InvalidConfigError("Logging", "static_mount_logs must be a boolean")
+            self.static_mount_logs = static_mount_logs
 
-        if not isinstance(level, str) or level.upper() not in VALID_LEVELS:
-            raise InvalidConfigError(
-                "Logging",
-                f"Invalid level '{level}'. Supported levels: {', '.join(sorted(VALID_LEVELS))}",
-            )
+        if level is not None:
+            if not isinstance(level, str) or level.upper() not in VALID_LEVELS:
+                raise InvalidConfigError(
+                    "Logging",
+                    f"Invalid level '{level}'. Supported levels: {', '.join(sorted(VALID_LEVELS))}",
+                )
+            self.level = level.upper()
 
-        if not isinstance(console_output, bool):
-            raise InvalidConfigError("Logging", "console_output must be a boolean")
+        if console_output is not None:
+            if not isinstance(console_output, bool):
+                raise InvalidConfigError("Logging", "console_output must be a boolean")
+            self.console_output = console_output
 
-        if not isinstance(redact_sensitive, bool):
-            raise InvalidConfigError("Logging", "redact_sensitive must be a boolean")
+        if redact_sensitive is not None:
+            if not isinstance(redact_sensitive, bool):
+                raise InvalidConfigError("Logging", "redact_sensitive must be a boolean")
+            self.redact_sensitive = redact_sensitive
 
         if custom_redact_keys is not None:
             if not isinstance(custom_redact_keys, list) or not all(isinstance(k, str) for k in custom_redact_keys):
                 raise InvalidConfigError("Logging", "custom_redact_keys must be a list of strings")
             self.custom_redact_keys = set(k.lower() for k in custom_redact_keys)
-
-        self.static_mount_logs = static_mount_logs
-        self.level = level.upper()
-        self.console_output = console_output
-        self.redact_sensitive = redact_sensitive
-        self._all_sensitive_keys = DEFAULT_SENSITIVE_KEYS.union(self.custom_redact_keys)
+            self._all_sensitive_keys = DEFAULT_SENSITIVE_KEYS.union(self.custom_redact_keys)
 
         self._init_filesystem()
         self._setup_uvicorn_logging()

@@ -70,6 +70,28 @@ Response:
     "secret_key": "...",
     "algorithm": "HS256",
     "session_duration_days": 7
+  },
+  "cookie": {
+    "cookie_mode": false,
+    "access_cookie_name": "access_token",
+    "refresh_cookie_name": "refresh_token",
+    "path": "/",
+    "domain": null,
+    "secure": false,
+    "httponly": true,
+    "samesite": "lax",
+    "max_age": null
+  },
+  "logging": {
+    "logging": true,
+    "enabled": true,
+    "logs_dir": "/path/to/logs",
+    "store_dir": "/path/to/logs/store",
+    "static_mount_logs": false,
+    "level": "INFO",
+    "console_output": true,
+    "redact_sensitive": true,
+    "custom_redact_keys": []
   }
 }
 ```
@@ -239,4 +261,89 @@ Response:
   "message": "JWT configured successfully"
 }
 ```
+
+## POST `/cookie`
+
+Configures cookie-based authentication settings.
+
+Body:
+
+```json
+{
+  "cookie_mode": true,
+  "access_cookie_name": "access_token",
+  "refresh_cookie_name": "refresh_token",
+  "path": "/",
+  "domain": "example.com",
+  "secure": true,
+  "httponly": true,
+  "samesite": "lax",
+  "max_age": 604800
+}
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "message": "Cookie settings updated successfully"
+}
+```
+
+## POST `/logging`
+
+Dynamically updates logging service settings at runtime. Accepts full or partial configurations.
+
+Body:
+
+```json
+{
+  "logging": true,
+  "level": "INFO",
+  "console_output": true,
+  "redact_sensitive": true,
+  "static_mount_logs": false,
+  "logs_dir": "/path/to/logs",
+  "custom_redact_keys": ["custom_secret", "tenant_api_key"]
+}
+```
+
+- `logging` (optional): Boolean. Globally enable (`true`) or disable (`false`) the logging subsystem.
+- `enabled` (optional): Boolean alias for `logging`.
+- `level` (optional): String (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`). Log verbosity threshold.
+- `console_output` (optional): Boolean. Mirror logs to terminal/stdout.
+- `redact_sensitive` (optional): Boolean. Automatically sanitize tokens, passwords, cookies, and secret keys.
+- `static_mount_logs` (optional): Boolean. Expose `logs/` via static file mount at `/logs`.
+- `logs_dir` (optional): String. Custom directory path where log files are stored.
+- `custom_redact_keys` (optional): Array of strings. Additional JSON keys to redact in application logs.
+
+Response:
+
+```json
+{
+  "success": true,
+  "message": "Logging service configured successfully"
+}
+```
+
+Example:
+
+```js
+// Dynamically toggle logging or change level to DEBUG
+const res = await fetch(`${baseUrl}/tc-auth/config/logging`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${accessToken}`,
+  },
+  body: JSON.stringify({
+    logging: true,
+    level: "DEBUG"
+  }),
+});
+
+const data = await res.json();
+```
+
 
