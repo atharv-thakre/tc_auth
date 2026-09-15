@@ -30,6 +30,7 @@ from .service import (
     AccountService,
     GetUserService,
     DashboardService,
+    LogService,
 )
 
 from .dependencies import (
@@ -47,6 +48,7 @@ from .api import (
     DashOAuthRoutes,
     DashAccountRoutes,
     DashSessionRoutes,
+    LogRoutes,
 )
 
 
@@ -57,6 +59,10 @@ class Auth:
 
         # Cookie
         self.cookie = CookieService()
+
+        # Logging
+        self.log = LogService()
+        self.logging = self.log
 
         # Services
         self.get_user = GetUserService(
@@ -80,7 +86,9 @@ class Auth:
             session=self.session,
             otp=self.otp,
             cookie_service=self.cookie,
+            log_service=self.log,
         )
+
 
         self.dashboard = DashboardService(
             session_factory=self.session_factory
@@ -129,7 +137,9 @@ class Auth:
             github=self.github,
             discord=self.discord,
             cookie_service=self.cookie,
+            log_service=self.log,
         )
+
 
         self.auth_routes = AuthRoutes(
             email_service=self.email,
@@ -168,6 +178,12 @@ class Auth:
             role_deps=self.role,
             dashboard_service=self.dashboard,
             cookie_service=self.cookie,
+            log_service=self.log,
+        )
+
+        self.log_routes = LogRoutes(
+            log_service=self.log,
+            role_deps=self.role,
         )
 
         if app is not None:
@@ -227,6 +243,19 @@ class Auth:
             self.dashboard_routes.router,
             prefix=prefix,
         )
+
+        app.include_router(
+            self.log_routes.router,
+            prefix=prefix,
+        )
+
+        if self.log.static_mount_logs:
+            self.mount_static_logs(app)
+
+    def mount_static_logs(self, app: FastAPI, path: str = "/logs"):
+        """Mounts the physical logs directory as a static file endpoint."""
+        from fastapi.staticfiles import StaticFiles
+        app.mount(path, StaticFiles(directory=str(self.log.logs_dir)), name="logs")
 
     def init(self):
         Base.metadata.create_all(bind=self.engine)

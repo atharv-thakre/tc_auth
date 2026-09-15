@@ -13,6 +13,11 @@ from .dashboard import (
     CookieConfig,
 )
 
+from .log import (
+    CreateSnapshotRequest,
+    LoggingConfig,
+)
+
 from .login import (
     SendOTPRequest,
     SendMagicLinkRequest,
@@ -54,6 +59,10 @@ __all__ = [
     "EmailConfig",
     "JWTConfig",
     "CookieConfig",
+
+    # logging
+    "CreateSnapshotRequest",
+    "LoggingConfig",
 
     # login
     "SendOTPRequest",

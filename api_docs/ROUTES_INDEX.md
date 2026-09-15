@@ -8,6 +8,7 @@ This folder documents the route modules in `tc_auth/api`.
 - [Frontend Token Usage Guide (Single & Dual Token)](token_usage_guide.md)
 - [Magic Link Architectural Guide](../magic_link.md)
 - [AI & LLM Comprehensive Documentation](../llm-docs/README.md)
+- [Logging & Monitoring Routes](log_route.md)
 - [Profile Routes](account_route.md)
 - [Dashboard / Config Routes](dashboard_route.md)
 - [Admin Account Routes](dash_account.md)
@@ -17,7 +18,4 @@ This folder documents the route modules in `tc_auth/api`.
 - [Changes & Usage Reference](../changes.md)
 - [System Route Placeholder](system_route.md)
 
-Notes:
-
-- All endpoints are mounted under `/tc-auth` by default.
 

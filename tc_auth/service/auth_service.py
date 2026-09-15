@@ -26,12 +26,14 @@ class AuthService:
         session,
         otp=None,
         cookie_service=None,
+        log_service=None,
     ):
         self.get_user = get_user
         self.account = account
         self.session = session
         self.otp = otp
         self.cookie_service = cookie_service
+        self.log_service = log_service
 
     def _authenticate(
         self,
@@ -39,9 +41,13 @@ class AuthService:
         password: str,
     ):
         if not identifier or not isinstance(identifier, str):
+            if self.log_service:
+                self.log_service.warning("LOGIN_FAILED", "Authentication failed: missing identifier")
             raise InvalidCredentialsError()
 
         if not password or not isinstance(password, str):
+            if self.log_service:
+                self.log_service.warning("LOGIN_FAILED", f"Authentication failed: missing password for '{identifier}'")
             raise InvalidCredentialsError()
 
         identifier = normalize_identifier(identifier)
@@ -59,16 +65,22 @@ class AuthService:
                 )
 
         except UserNotFoundError:
+            if self.log_service:
+                self.log_service.warning("LOGIN_FAILED", f"Authentication failed: user not found for '{identifier}'")
             raise InvalidCredentialsError()
 
         password_hash = account.get("password_hash")
         if not password_hash:
+            if self.log_service:
+                self.log_service.warning("LOGIN_FAILED", f"Authentication failed: no password hash for '{identifier}'")
             raise InvalidCredentialsError()
 
         if not verify_password(
             password,
             password_hash,
         ):
+            if self.log_service:
+                self.log_service.warning("LOGIN_FAILED", f"Authentication failed: invalid password for '{identifier}'")
             raise InvalidCredentialsError()
 
         account.pop("password_hash", None)
@@ -108,6 +120,18 @@ class AuthService:
         if jwt_handler.is_dual_token_mode():
             res_data["refresh_token"] = create_refresh_token(token_payload)
 
+        if self.log_service:
+            self.log_service.info(
+                event="LOGIN_SUCCESS",
+                message=f"User '{account.get('email') or account.get('handle')}' logged in successfully",
+                client_ip=ip_address,
+                user_agent=user_agent,
+                metadata={
+                    "account_id": account.get("id"),
+                    "session_id": session.get("session_id"),
+                },
+            )
+
         if response is not None and self.cookie_service and self.cookie_service.is_cookie_mode():
             self.cookie_service.set_auth_cookies(
                 response=response,
@@ -121,6 +145,7 @@ class AuthService:
             }
 
         return res_data
+
 
     def refresh_tokens(
         self,

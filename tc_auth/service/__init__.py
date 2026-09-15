@@ -5,6 +5,7 @@ from .session_service import SessionService
 from .account_service import AccountService
 from .get_user_service import GetUserService
 from .dashboard_service import DashboardService
+from .log_service import LogService, Logging
 
 __all__ = [
     "OTPService",
@@ -14,4 +15,6 @@ __all__ = [
     "AccountService",
     "GetUserService",
     "DashboardService",
-]
+    "LogService",
+    "Logging",
+]

@@ -7,6 +7,7 @@ from .dash_otp import DashOTPRoutes
 from .dash_oauth import DashOAuthRoutes
 from .dash_account import DashAccountRoutes
 from .dash_session import DashSessionRoutes
+from .log_route import LogRoutes, LogRoute
 
 __all__ = [
     "AuthRoutes",
@@ -17,4 +18,6 @@ __all__ = [
     "DashOAuthRoutes",
     "DashAccountRoutes",
     "DashSessionRoutes",
-]
+    "LogRoutes",
+    "LogRoute",
+]

@@ -6,6 +6,7 @@ from ..schema import (
     EmailConfig,
     JWTConfig,
     CookieConfig,
+    LoggingConfig,
 )
 
 
@@ -20,6 +21,7 @@ class DashboardRoute:
         dashboard_service,
         discord_service=None,
         cookie_service=None,
+        log_service=None,
     ):
         self.email_service = email_service
         self.github_service = github_service
@@ -29,6 +31,7 @@ class DashboardRoute:
         self.role_deps = role_deps
         self.dashboard_service = dashboard_service
         self.cookie_service = cookie_service
+        self.log_service = log_service
 
         self.router = APIRouter(prefix="/config", tags=["CONFIG"])
         self.register()
@@ -54,6 +57,7 @@ class DashboardRoute:
                 "discord": self.discord_service.load() if self.discord_service else None,
                 "jwt": self.jwt_service.load(),
                 "cookie": self.cookie_service.load() if self.cookie_service else None,
+                "logging": self.log_service.load() if self.log_service else None,
             }
 
         @self.router.get("/counts")
@@ -87,3 +91,10 @@ class DashboardRoute:
             if not self.cookie_service:
                 return {"success": False, "message": "Cookie service is not available"}
             return self.cookie_service.config(**config.model_dump())
+
+        @self.router.post("/logging")
+        def configure_logging(config: LoggingConfig, user=current):
+            if not self.log_service:
+                return {"success": False, "message": "Logging service is not available"}
+            return self.log_service.config(**config.model_dump())
+

@@ -613,3 +613,77 @@ class OAuthProviderError(OAuthError, ExternalServiceError):
         self.provider = provider
         msg = message or f"External {provider} provider returned an error"
         super().__init__(msg)
+
+
+# ==============================================================================
+# CATEGORY 8: LOGGING SUBSYSTEM ERRORS
+# ==============================================================================
+
+class LoggingError(AuthError):
+    """Base exception for logging subsystem errors."""
+    status_code = 500
+    error_code = "logging_error"
+
+
+class LoggingNotConfiguredError(LoggingError, ConfigurationError):
+    """Raised when logging operations are requested before initialization."""
+    status_code = 500
+    error_code = "logging_not_configured"
+
+    def __init__(self, message: str = "Logging service is not configured"):
+        super().__init__(message)
+
+
+class LogSourceInvalidError(LoggingError, BadRequestError):
+    """Raised when an invalid log source is specified (only 'tcauth' or 'server' are allowed)."""
+    status_code = 422
+    error_code = "invalid_log_source"
+
+    def __init__(self, source: str, message: str | None = None):
+        self.source = source
+        msg = message or f"Invalid log source '{source}'. Must be 'tcauth' or 'server'."
+        super().__init__(msg)
+
+
+class LogUnsafeNameError(LoggingError, BadRequestError):
+    """Raised when a snapshot name contains forbidden characters, separators, or path traversal elements."""
+    status_code = 422
+    error_code = "invalid_log_name"
+
+    def __init__(self, name: str, message: str | None = None):
+        self.name = name
+        msg = message or f"Invalid log snapshot name '{name}'. Name must be alphanumeric with hyphens/underscores."
+        super().__init__(msg)
+
+
+class LogSnapshotNotFoundError(LoggingError, NotFoundError):
+    """Raised when a requested snapshot file cannot be found in logs/store/."""
+    status_code = 404
+    error_code = "log_snapshot_not_found"
+
+    def __init__(self, name: str, message: str | None = None):
+        self.name = name
+        msg = message or f"Log snapshot '{name}' not found"
+        super().__init__(msg)
+
+
+class LogSnapshotAlreadyExistsError(LoggingError, ConflictError):
+    """Raised when attempting to create a snapshot that already exists."""
+    status_code = 409
+    error_code = "log_snapshot_already_exists"
+
+    def __init__(self, name: str, message: str | None = None):
+        self.name = name
+        msg = message or f"Log snapshot '{name}' already exists"
+        super().__init__(msg)
+
+
+class LogCannotDeletePrimaryError(LoggingError, PermissionDeniedError):
+    """Raised when attempting to delete a primary log (tcauth or server)."""
+    status_code = 403
+    error_code = "log_cannot_delete_primary"
+
+    def __init__(self, source: str, message: str | None = None):
+        self.source = source
+        msg = message or f"Cannot delete primary log '{source}'. Only stored snapshots can be deleted."
+        super().__init__(current=source, field="log_source", message=msg)

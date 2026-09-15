@@ -19,6 +19,7 @@ class AccountRoutes:
         github=None,
         discord=None,
         cookie_service=None,
+        log_service=None,
     ):
         self.session_service = session_service
         self.account_service = account_service
@@ -28,6 +29,7 @@ class AccountRoutes:
         self.github = github
         self.discord = discord
         self.cookie_service = cookie_service
+        self.log_service = log_service
 
         self.router = APIRouter(tags=["Profile Routes"])
         self.register()
@@ -40,6 +42,12 @@ class AccountRoutes:
             result = self.session_service.destroy_session(user["session"]["id"])
             if self.cookie_service and self.cookie_service.is_cookie_mode():
                 self.cookie_service.clear_auth_cookies(response)
+            if self.log_service:
+                self.log_service.info(
+                    "LOGOUT",
+                    f"User '{user['account'].get('email') or user['account'].get('handle')}' logged out successfully",
+                    metadata={"account_id": user["account"]["id"], "session_id": user["session"]["id"]},
+                )
             return result
 
         @self.router.post("/logout-all")
@@ -47,7 +55,14 @@ class AccountRoutes:
             result = self.session_service.destroy_all(user["account"]["id"])
             if self.cookie_service and self.cookie_service.is_cookie_mode():
                 self.cookie_service.clear_auth_cookies(response)
+            if self.log_service:
+                self.log_service.info(
+                    "LOGOUT_ALL",
+                    f"All sessions destroyed for user '{user['account'].get('email') or user['account'].get('handle')}'",
+                    metadata={"account_id": user["account"]["id"]},
+                )
             return result
+
 
         @self.router.get("/me")
         def me(user=current):

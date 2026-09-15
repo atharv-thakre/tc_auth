@@ -63,6 +63,14 @@ from .error import (
     OAuthCallbackError,
     OAuthUnlinkLockoutError,
     OAuthProviderError,
+    # Category 8: Logging Subsystem
+    LoggingError,
+    LoggingNotConfiguredError,
+    LogSourceInvalidError,
+    LogUnsafeNameError,
+    LogSnapshotNotFoundError,
+    LogSnapshotAlreadyExistsError,
+    LogCannotDeletePrimaryError,
 )
 from .handler import auth_exception_handler
 
@@ -131,6 +139,14 @@ __all__ = [
     "OAuthCallbackError",
     "OAuthUnlinkLockoutError",
     "OAuthProviderError",
+    # Category 8: Logging Subsystem
+    "LoggingError",
+    "LoggingNotConfiguredError",
+    "LogSourceInvalidError",
+    "LogUnsafeNameError",
+    "LogSnapshotNotFoundError",
+    "LogSnapshotAlreadyExistsError",
+    "LogCannotDeletePrimaryError",
     # Handler
     "auth_exception_handler",
 ]
