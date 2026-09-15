@@ -9,6 +9,7 @@ This folder documents the route modules in `tc_auth/api`.
 - [Magic Link Architectural Guide](../magic_link.md)
 - [AI & LLM Comprehensive Documentation](../llm-docs/README.md)
 - [Logging & Monitoring Routes](log_route.md)
+- [Logging Frontend Integration Guide](log_frontend_guide.md)
 - [Profile Routes](account_route.md)
 - [Dashboard / Config Routes](dashboard_route.md)
 - [Admin Account Routes](dash_account.md)

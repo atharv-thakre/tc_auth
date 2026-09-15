@@ -39,6 +39,7 @@ Base Documentation URL: https://auth.codesena.me/documents
    - https://auth.codesena.me/documents/api/dash_otp.md -> Superadmin OTP inspection, creation, revocation, and cleanup.
    - https://auth.codesena.me/documents/api/dash_oauth.md -> Superadmin OAuth link management.
    - https://auth.codesena.me/documents/api/log_route.md -> Centralized logging routes, snapshots, and SSE streaming.
+   - https://auth.codesena.me/documents/api/log_frontend_guide.md -> Frontend logging implementation guide with TypeScript types, SSE streams, React hook & UI.
    - https://auth.codesena.me/documents/api/system_route.md -> System route placeholder.
 
 3. Python SDK Service Guides & Source Files (/documents/sdk/):

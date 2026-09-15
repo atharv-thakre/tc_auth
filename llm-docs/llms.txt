@@ -38,6 +38,7 @@
 - [OAuth Frontend Integration](https://auth.codesena.me/documents/api/oauth_integration.md): Frontend handling for redirects, popups, and callback URLs.
 - [Frontend Token Usage Guide](https://auth.codesena.me/documents/api/token_usage_guide.md): Universal guide for Single & Dual-token modes with Axios interceptors.
 - [Logging & Monitoring Routes](https://auth.codesena.me/documents/api/log_route.md): Primary logs, snapshots, resets, and SSE streaming.
+- [Logging Frontend Integration](https://auth.codesena.me/documents/api/log_frontend_guide.md): Frontend guide for log viewing, snapshot management, and SSE streaming.
 - [Dashboard & Config Routes](https://auth.codesena.me/documents/api/dashboard_route.md): Health pulse probe, dynamic config loading & live updates.
 - [Admin Account Routes](https://auth.codesena.me/documents/api/dash_account.md): Superadmin account CRUD, search, and pagination.
 - [Admin Session Routes](https://auth.codesena.me/documents/api/dash_session.md): Superadmin session inspection and token cleanup.
