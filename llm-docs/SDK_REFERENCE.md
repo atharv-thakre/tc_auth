@@ -254,7 +254,7 @@ Configures the centralized logging subsystem.
 - **`logging`** (*bool*, default `True`): Master toggle. If `False`, SDK logging calls are no-ops, programmatic inspection calls raise `LoggingDisabledError`, and all `/log/*` HTTP endpoints return `400 Bad Request` (`error_code: "logging_disabled"`).
 
 ### `load() -> dict`
-Returns the active configuration dictionary including `"logging"`, `"enabled"`, `"logs_dir"`, `"store_dir"`, `"level"`, etc.
+Returns the active configuration dictionary including `"logging"`, `"logs_dir"`, `"store_dir"`, `"level"`, etc.
 
 ### `info(event: str, message: str, **kwargs) -> None`
 ### `debug(event: str, message: str, **kwargs) -> None`

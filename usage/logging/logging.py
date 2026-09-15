@@ -13,7 +13,7 @@ from connect import auth
 #         Configure logging enabled status, directory, levels, redaction, and static mounting.
 #
 #     load()
-#         Get current logging configuration dictionary (includes "logging" / "enabled" keys).
+#         Get current logging configuration dictionary (includes "logging" key).
 #
 #     info(event, message, **metadata)
 #     debug(event, message, **metadata)

@@ -146,9 +146,8 @@ class LogService:
         redact_sensitive: bool = True,
         custom_redact_keys: list[str] | None = None,
         logging: bool = True,
-        enabled: bool | None = None,
     ):
-        self.logging = bool(enabled) if enabled is not None else bool(logging)
+        self.logging = bool(logging)
         self.logs_dir = Path(logs_dir).resolve() if logs_dir else (Path.cwd() / "logs").resolve()
         self.store_dir = self.logs_dir / "store"
         self.static_mount_logs = bool(static_mount_logs)
@@ -219,14 +218,6 @@ class LogService:
             sys.stderr.write(f"[tc-auth LogService] Error setting up Uvicorn logger: {e}\n")
 
     @property
-    def enabled(self) -> bool:
-        return self.logging
-
-    @enabled.setter
-    def enabled(self, value: bool):
-        self.logging = bool(value)
-
-    @property
     def is_configured(self) -> bool:
         return self.logs_dir.exists() and self.store_dir.exists()
 
@@ -239,7 +230,6 @@ class LogService:
         self,
         *,
         logging: bool | None = None,
-        enabled: bool | None = None,
         logs_dir: str | Path | None = None,
         static_mount_logs: bool | None = None,
         level: str | None = None,
@@ -254,11 +244,6 @@ class LogService:
             if not isinstance(logging, bool):
                 raise InvalidConfigError("Logging", "logging must be a boolean")
             self.logging = logging
-
-        if enabled is not None:
-            if not isinstance(enabled, bool):
-                raise InvalidConfigError("Logging", "enabled must be a boolean")
-            self.logging = enabled
 
         if logs_dir is not None:
             if not isinstance(logs_dir, (str, Path)) or not str(logs_dir).strip():
@@ -310,7 +295,6 @@ class LogService:
         """
         return {
             "logging": self.logging,
-            "enabled": self.logging,
             "logs_dir": str(self.logs_dir),
             "store_dir": str(self.store_dir),
             "static_mount_logs": self.static_mount_logs,

@@ -25,10 +25,6 @@ class LoggingConfig(BaseModel):
         default=None,
         description="Whether logging is globally enabled or disabled.",
     )
-    enabled: bool | None = Field(
-        default=None,
-        description="Alias for logging toggle.",
-    )
     logs_dir: str | None = Field(
         default=None,
         description="Base directory for log files. Defaults to 'logs/' in working directory.",

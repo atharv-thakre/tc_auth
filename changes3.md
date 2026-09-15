@@ -372,7 +372,7 @@ auth.log.config(
 ```
 
 > [!NOTE]
-> When `logging=False` (or `enabled=False`):
+> When `logging=False`:
 > - All `/log/*` API endpoints immediately return `400 Bad Request` with `error_code: "logging_disabled"`.
 > - SDK logging calls (`auth.log.info`, `auth.log.error`, etc.) are silent no-ops.
 > - Management calls (`auth.log.list_logs()`, `auth.log.create_snapshot()`, etc.) raise `LoggingDisabledError`.
@@ -383,7 +383,6 @@ config = auth.log.load()
 print(config)
 # {
 #   "logging": True,
-#   "enabled": True,
 #   "logs_dir": "/path/to/project/logs",
 #   "store_dir": "/path/to/project/logs/store",
 #   "static_mount_logs": False,

@@ -84,7 +84,6 @@ Response:
   },
   "logging": {
     "logging": true,
-    "enabled": true,
     "logs_dir": "/path/to/logs",
     "store_dir": "/path/to/logs/store",
     "static_mount_logs": false,
@@ -310,7 +309,6 @@ Body:
 ```
 
 - `logging` (optional): Boolean. Globally enable (`true`) or disable (`false`) the logging subsystem.
-- `enabled` (optional): Boolean alias for `logging`.
 - `level` (optional): String (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`). Log verbosity threshold.
 - `console_output` (optional): Boolean. Mirror logs to terminal/stdout.
 - `redact_sensitive` (optional): Boolean. Automatically sanitize tokens, passwords, cookies, and secret keys.

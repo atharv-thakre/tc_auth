@@ -33,7 +33,7 @@ auth.log.config(
 ```
 
 > [!NOTE]
-> **Disabled Mode (`logging=False` / `enabled=False`)**:
+> **Disabled Mode (`logging=False`)**:
 > - SDK logging calls (`auth.log.info`, `auth.log.error`, etc.) become silent no-ops.
 > - SDK management calls (`auth.log.list_logs()`, `auth.log.create_snapshot()`, etc.) raise `LoggingDisabledError`.
 > - All `/log/*` API endpoints return HTTP `400 Bad Request` with `{"success": false, "message": "Logging is disabled", "error_code": "logging_disabled"}`.
