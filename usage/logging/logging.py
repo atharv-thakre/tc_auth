@@ -93,18 +93,18 @@ auth.log.info(
 # 4. MANAGE SNAPSHOTS
 # ==========================================================
 
-# Create a snapshot
+# Create a snapshot (physical file created: logs/store/tcauth-debug-session.log)
 snapshot = auth.log.create_snapshot(name="debug-session", source="tcauth")
 print("Snapshot created:", snapshot)
 
-# List all logs
+# List all logs (snapshot name in summary is "tcauth-debug-session")
 summary = auth.log.list_logs()
 print("All Logs:", summary)
 
-# Read snapshot content
-content = auth.log.get_log_content(name="debug-session", limit=10)
+# Read snapshot content using full name without extension ("tcauth-debug-session")
+content = auth.log.get_log_content(name="tcauth-debug-session", limit=10)
 print("Snapshot Content:", content)
 
-# Delete snapshot
-auth.log.delete_snapshot(name="debug-session")
+# Delete snapshot using full name without extension ("tcauth-debug-session")
+auth.log.delete_snapshot(name="tcauth-debug-session")
 print("Snapshot deleted successfully")

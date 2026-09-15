@@ -432,9 +432,9 @@ OAuth provider callback endpoint. Exchanges code for token and user profile, han
 
 ### Log Discovery & Snapshots
 - **`GET /log`**: Summary list of primary logs (`tcauth`, `server`) and all snapshots in `logs/store/`.
-- **`POST /log`**: Create snapshot of `tcauth` or `server` with body `{"name": "string", "source": "tcauth"|"server"}`.
-- **`GET /log/{name}`**: Get log contents by name (supports `limit`, `offset`).
-- **`DELETE /log/{name}`**: Delete snapshot file from `logs/store/` (primary logs cannot be deleted).
+- **`POST /log`**: Create snapshot of `tcauth` or `server` with body `{"name": "custom_name", "source": "tcauth"|"server"}`. Physical file saved as `{source}-{name}.log`.
+- **`GET /log/{name}`**: Get log contents by name (`tcauth`, `server`, or full snapshot name without extension, e.g. `tcauth-custom_name`).
+- **`DELETE /log/{name}`**: Delete snapshot file from `logs/store/` by full snapshot name without extension (e.g. `tcauth-custom_name`). Primary logs cannot be deleted.
 
 ### Primary Logs & Stream
 - **`GET /log/tcauth`**: Retrieve parsed JSON records from `tcauth.log` (supports `limit`, `offset`).

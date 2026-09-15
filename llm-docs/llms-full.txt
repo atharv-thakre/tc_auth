@@ -280,15 +280,15 @@ Admin Routes (Requires role: superadmin):
 
 Logging Routes (Requires role: superadmin, returns 400 'logging_disabled' if logging=False):
 - `GET /log`: Summary of primary logs (tcauth, server) and stored snapshots
-- `POST /log`: Create point-in-time snapshot of tcauth or server
+- `POST /log`: Create point-in-time snapshot of tcauth or server (`{"name": "custom_name", "source": "tcauth"|"server"}` -> saves as `{source}-{name}.log`)
 - `GET /log/tcauth`: Paginated JSON records from tcauth.log
 - `GET /log/server`: Paginated lines from server.log
-- `GET /log/{name}`: Contents of snapshot or primary log by name
+- `GET /log/{name}`: Contents of primary log (`tcauth`, `server`) or snapshot by full filename without extension (e.g. `tcauth-custom_name`)
 - `GET /log/tcauth/stream`: Real-time SSE stream for tcauth.log
 - `GET /log/server/stream`: Real-time SSE stream for server.log
 - `POST /log/tcauth/reset`: Truncate tcauth.log to 0 bytes
 - `POST /log/server/reset`: Truncate server.log to 0 bytes
-- `DELETE /log/{name}`: Delete stored snapshot file
+- `DELETE /log/{name}`: Delete stored snapshot file by full filename without extension (e.g. `tcauth-custom_name`)
 
 ================================================================================
 6. COMPLETE EXCEPTION HIERARCHY & HTTP CODES

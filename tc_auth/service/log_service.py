@@ -670,7 +670,7 @@ class LogService:
             "success": True,
             "message": f"Snapshot '{clean_name}' created successfully",
             "snapshot": {
-                "name": clean_name,
+                "name": dst_path.name[:-4],
                 "source": src,
                 "filename": dst_path.name,
                 "format": "jsonl" if src == "tcauth" else "text",
@@ -707,23 +707,21 @@ class LogService:
                 if not entry.is_file():
                     continue
                 filename = entry.name
-                # Parse source-name format
+                snap_full_name = filename[:-4] if filename.endswith(".log") else filename
+                # Parse source
                 if filename.startswith("tcauth-"):
                     source = "tcauth"
-                    snap_name = filename[7:-4]
                     log_format = "jsonl"
                 elif filename.startswith("server-"):
                     source = "server"
-                    snap_name = filename[7:-4]
                     log_format = "text"
                 else:
                     source = "unknown"
-                    snap_name = filename[:-4] if filename.endswith(".log") else filename
                     log_format = "text"
 
                 stat = entry.stat()
                 snapshots.append({
-                    "name": snap_name,
+                    "name": snap_full_name,
                     "source": source,
                     "filename": filename,
                     "format": log_format,

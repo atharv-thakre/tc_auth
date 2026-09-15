@@ -83,6 +83,11 @@ Retrieve summary metadata for all primary logs and saved snapshot files.
 ### 2.2 `POST /log`
 Create a snapshot copy of an active primary log into `logs/store/{source}-{name}.log`.
 
+> **Naming Rule**:
+> - In `POST /log` body, pass only the custom identifier in `name` (e.g. `"pre-release-check"`).
+> - The physical file created on disk is `{source}-{name}.log` (e.g. `tcauth-pre-release-check.log`).
+> - The response returns the full snapshot name (`tcauth-pre-release-check`) and filename (`tcauth-pre-release-check.log`).
+
 - **Headers**: `Authorization: Bearer <token>`, `Content-Type: application/json`
 - **Request Body**:
 ```json
@@ -100,7 +105,7 @@ Create a snapshot copy of an active primary log into `logs/store/{source}-{name}
   "success": true,
   "message": "Snapshot 'pre-release-check' created successfully",
   "snapshot": {
-    "name": "pre-release-check",
+    "name": "tcauth-pre-release-check",
     "source": "tcauth",
     "filename": "tcauth-pre-release-check.log",
     "format": "jsonl",
@@ -186,10 +191,12 @@ Read lines from `server.log` (standard text lines).
 Retrieve contents of a specific log file or snapshot by name.
 
 - **Headers**: `Authorization: Bearer <token>`
-- **Path Parameter**: `name` (e.g. `tcauth`, `server`, `auth-debug-session`)
+- **Path Parameter**: `name`
+  - For primary logs: `"tcauth"` or `"server"`.
+  - For stored snapshots: The **full snapshot filename without extension** (e.g. `"tcauth-pre-release-check"` or `"server-pre-release-check"`).
 - **Query Parameters**: `limit`, `offset`
 - **Response `200 OK`**: Returns JSON records for JSONL files or string lines for text files.
-- **Error Response `404 Not Found`**: `{ "success": false, "message": "Log file or snapshot 'invalid-name' was not found", "error_code": "snapshot_not_found" }`
+- **Error Response `404 Not Found`**: `{ "success": false, "message": "Log snapshot 'invalid-name' not found", "error_code": "log_snapshot_not_found" }`
 
 ---
 
@@ -235,8 +242,8 @@ Truncate the target primary log file to 0 bytes and continue logging.
 Delete a stored snapshot file from `logs/store/`.
 
 - **Headers**: `Authorization: Bearer <token>`
-- **Path Parameter**: `name` (the snapshot identifier)
+- **Path Parameter**: `name` (the **full snapshot filename without extension**, e.g. `"tcauth-pre-release-check"`).
 - **Response `204 No Content`**
 - **Error Responses**:
-  - `403 Forbidden`: `{ "success": false, "message": "Cannot delete primary active log file 'tcauth'", "error_code": "cannot_delete_primary" }`
-  - `404 Not Found`: `{ "success": false, "message": "Snapshot 'old-backup' not found in store", "error_code": "snapshot_not_found" }`
+  - `403 Forbidden`: `{ "success": false, "message": "Cannot delete primary log 'tcauth'. Only stored snapshots can be deleted.", "error_code": "log_cannot_delete_primary" }`
+  - `404 Not Found`: `{ "success": false, "message": "Log snapshot 'old-backup' not found", "error_code": "log_snapshot_not_found" }`

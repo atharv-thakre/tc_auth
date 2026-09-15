@@ -254,7 +254,7 @@ async function fetchLogsSummary(token: string) {
   ],
   "snapshots": [
     {
-      "name": "oauth-debug-session",
+      "name": "tcauth-oauth-debug-session",
       "source": "tcauth",
       "filename": "tcauth-oauth-debug-session.log",
       "format": "jsonl",
@@ -269,6 +269,8 @@ async function fetchLogsSummary(token: string) {
 ```
 
 #### 2. Creating a Snapshot
+When creating a snapshot, provide only your custom identifier as `name` and the target `source` (`tcauth` or `server`). The system saves it on disk as `{source}-{name}.log` (e.g. `tcauth-oauth-debug-session.log`).
+
 ```typescript
 async function createSnapshot(name: string, source: "tcauth" | "server", token: string) {
   const res = await fetch("/log", {
@@ -290,7 +292,7 @@ async function createSnapshot(name: string, source: "tcauth" | "server", token: 
     throw new Error("Failed to create snapshot.");
   }
 
-  return await res.json(); // 201 Created
+  return await res.json(); // 201 Created -> returns snapshot with full name: `${source}-${name}`
 }
 ```
 
@@ -307,9 +309,12 @@ async function resetPrimaryLog(source: "tcauth" | "server", token: string) {
 ```
 
 #### 4. Deleting a Stored Snapshot
+For deleting a snapshot, provide the **full snapshot name without extension** (e.g. `tcauth-oauth-debug-session` or `server-oauth-debug-session` as returned by `GET /log`).
+
 ```typescript
-async function deleteSnapshot(snapshotName: string, token: string) {
-  const res = await fetch(`/log/${snapshotName}`, {
+async function deleteSnapshot(fullSnapshotName: string, token: string) {
+  // fullSnapshotName = "tcauth-oauth-debug-session" (no .log extension)
+  const res = await fetch(`/log/${fullSnapshotName}`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -591,6 +596,7 @@ API Documentation Reference:
 
 #### 2. `POST /log`
 - **Summary**: Create a snapshot copy of a primary log file in `logs/store/`.
+- **Naming Rule**: On creation, pass only the custom identifier in `name` (e.g. `"oauth-debug-session"`). The backend creates `{source}-{name}.log` (e.g. `tcauth-oauth-debug-session.log`).
 - **Headers**: `Authorization: Bearer <token>`, `Content-Type: application/json`
 - **Request Body**:
 ```json
@@ -608,7 +614,7 @@ API Documentation Reference:
   "success": true,
   "message": "Snapshot 'oauth-debug-session' created successfully",
   "snapshot": {
-    "name": "oauth-debug-session",
+    "name": "tcauth-oauth-debug-session",
     "source": "tcauth",
     "filename": "tcauth-oauth-debug-session.log",
     "format": "jsonl",
@@ -695,7 +701,9 @@ API Documentation Reference:
 #### 5. `GET /log/{name}`
 - **Summary**: Retrieve contents of a snapshot or primary log by name.
 - **Headers**: `Authorization: Bearer <token>`
-- **Path Parameter**: `name` (e.g. `tcauth`, `server`, `oauth-debug-session` — no `.log` extension required)
+- **Path Parameter**: `name`
+  - For primary logs: `"tcauth"` or `"server"`.
+  - For stored snapshots: The **full snapshot filename without extension** (e.g. `"tcauth-oauth-debug-session"` or `"server-oauth-debug-session"`).
 - **Response `200 OK`**: Returns parsed JSON array for JSONL logs or string lines for text logs.
 - **Error Response**: `404 Not Found` if snapshot does not exist.
 
@@ -732,7 +740,7 @@ data: {"timestamp":"2026-09-14T01:31:45+00:00","level":"INFO","event":"LOGIN_SUC
 #### 8. `DELETE /log/{name}`
 - **Summary**: Delete a stored snapshot file from `logs/store/`.
 - **Headers**: `Authorization: Bearer <token>`
-- **Path Parameter**: `name` (snapshot name)
+- **Path Parameter**: `name` (the **full snapshot name without extension**, e.g. `"tcauth-oauth-debug-session"`).
 - **Response `204 No Content`**
 - **Error Responses**:
   - `403 Forbidden`: If `{name}` is `"tcauth"` or `"server"` (primary logs cannot be deleted).

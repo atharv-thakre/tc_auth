@@ -87,6 +87,10 @@ Logged output:
 All management endpoints require administrative privilege (`superadmin` role).
 If logging is disabled via `logging=False`, all endpoints return `400 Bad Request` with `{"success": false, "message": "Logging is disabled", "error_code": "logging_disabled"}`.
 
+> **Snapshot Naming Rules**:
+> - **Create (`POST /log`)**: Provide custom identifier in `name` (e.g. `{"name": "debug-session", "source": "tcauth"}`). The server saves it as `tcauth-debug-session.log` in `logs/store/`.
+> - **Read & Delete (`GET /log/{name}` & `DELETE /log/{name}`)**: Provide the **full snapshot filename without extension** (e.g. `tcauth-debug-session`).
+
 Prefix: `/tc-auth/log` (or `/log` depending on `include_routes` prefix).
 
 | Method | Endpoint | Description | Status Code |
@@ -95,12 +99,12 @@ Prefix: `/tc-auth/log` (or `/log` depending on `include_routes` prefix).
 | `POST` | `/log` | Create a snapshot (`{ "name": "...", "source": "tcauth" }`) | `201 Created` (`400` if disabled) |
 | `GET` | `/log/tcauth` | Get `tcauth.log` records (supports `limit`, `offset`) | `200 OK` (`400` if disabled) |
 | `GET` | `/log/server` | Get `server.log` lines (supports `limit`, `offset`) | `200 OK` (`400` if disabled) |
-| `GET` | `/log/{name}` | Get specific snapshot or primary log content | `200 OK` (`400` if disabled) |
+| `GET` | `/log/{name}` | Get specific snapshot or primary log content (full name without extension) | `200 OK` (`400` if disabled) |
 | `GET` | `/log/tcauth/stream` | Server-Sent Events (SSE) stream for `tcauth.log` | `200 OK` (`400` if disabled) |
 | `GET` | `/log/server/stream` | Server-Sent Events (SSE) stream for `server.log` | `200 OK` (`400` if disabled) |
 | `POST` | `/log/tcauth/reset` | Truncate `tcauth.log` to 0 bytes and continue logging | `200 OK` (`400` if disabled) |
 | `POST` | `/log/server/reset` | Truncate `server.log` to 0 bytes and continue logging | `200 OK` (`400` if disabled) |
-| `DELETE` | `/log/{name}` | Delete snapshot from `logs/store/` | `204 No Content` (`400` if disabled) |
+| `DELETE` | `/log/{name}` | Delete snapshot from `logs/store/` (full name without extension) | `204 No Content` (`400` if disabled) |
 
 ---
 
