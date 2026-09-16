@@ -37,6 +37,10 @@ class LoggingConfig(BaseModel):
         default=None,
         description="Whether to expose the logs directory via a static mount at /logs",
     )
+    static_mount_log: bool | None = Field(
+        default=None,
+        description="Alias for static_mount_logs toggle.",
+    )
     level: str | None = Field(
         default=None,
         description="Logging level threshold (DEBUG, INFO, WARNING, ERROR, CRITICAL)",

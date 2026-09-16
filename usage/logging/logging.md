@@ -25,7 +25,7 @@ Configure via `auth.log.config(...)` or `auth.logging.config(...)`:
 auth.log.config(
     logging=True,              # Master toggle (default: True). Set False to disable logging
     logs_dir="logs",           # Base directory (default: 'logs/' in working directory)
-    static_mount_logs=False,   # If True, exposes logs/ at GET /logs/*
+    static_mount_logs=False,   # Master static route gate (alias: static_mount_log)
     level="INFO",              # DEBUG, INFO, WARNING, ERROR, CRITICAL
     console_output=True,       # Echo JSONL events to stdout
     capture_terminal=False,    # If True, captures all process print() calls into server.log
@@ -35,13 +35,25 @@ auth.log.config(
         r"(?i)api[_-]?key\s*[:=]\s*\S+",
     ],
 )
+
+# Mount the static log endpoint on your FastAPI app:
+auth.log.mount(app)
 ```
+
+> [!TIP]
+> **Dynamic Static Mount**:
+> - Call `auth.log.mount(app)` once during application startup.
+> - Access to `/logs/<filename>` is dynamically evaluated on every request based on `static_mount_logs` (or `static_mount_log`) and `logging`.
+> - If `static_mount_logs=True` and `logging=True`: returns `200 OK` and serves the file directly.
+> - If `static_mount_logs=False` or `logging=False`: returns `404 Not Found` (`Static log access is disabled`).
+> - You can toggle this on and off anytime via `auth.log.config(static_mount_log=True/False)` or `POST /tc-auth/config/logging` without restarting or remounting the server!
 
 > [!NOTE]
 > **Disabled Mode (`logging=False`)**:
 > - SDK logging calls (`auth.log.info`, `auth.log.error`, etc.) become silent no-ops.
 > - SDK management calls (`auth.log.list_logs()`, `auth.log.create_snapshot()`, etc.) raise `LoggingDisabledError`.
 > - All `/log/*` API endpoints return HTTP `400 Bad Request` with `{"success": false, "message": "Logging is disabled", "error_code": "logging_disabled"}`.
+> - Static log access at `/logs` returns `404 Not Found`.
 
 ---
 

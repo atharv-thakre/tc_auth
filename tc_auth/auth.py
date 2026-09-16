@@ -253,9 +253,10 @@ class Auth:
             self.mount_static_logs(app)
 
     def mount_static_logs(self, app: FastAPI, path: str = "/logs"):
-        """Mounts the physical logs directory as a static file endpoint."""
-        from fastapi.staticfiles import StaticFiles
-        app.mount(path, StaticFiles(directory=str(self.log.logs_dir)), name="logs")
+        """Mounts the physical logs directory as a static file endpoint with dynamic access control."""
+        self.log.mount(app, path=path)
+
+    mount_logs = mount_static_logs
 
     def init(self):
         Base.metadata.create_all(bind=self.engine)

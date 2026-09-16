@@ -9,7 +9,11 @@ from connect import auth
 #
 # Available methods:
 #
-#     config(logging=True, logs_dir=None, static_mount_logs=False, level="INFO", console_output=True, capture_terminal=False, redact_sensitive=True, redact_patterns=None)
+#     mount(app, path="/logs")
+#         Mount the logs directory on a FastAPI application instance. Access to static files
+#         is dynamically enabled or disabled via static_mount_log / static_mount_logs in config.
+#
+#     config(logging=True, logs_dir=None, static_mount_logs=False, static_mount_log=None, level="INFO", console_output=True, capture_terminal=False, redact_sensitive=True, redact_patterns=None)
 #         Configure logging enabled status, directory, levels, redaction, terminal capture, and static mounting.
 #
 #     load()
@@ -50,13 +54,13 @@ print("Current Logging Config:", config)
 
 
 # ==========================================================
-# 2. CONFIGURE LOGGING
+# 2. CONFIGURE LOGGING & MOUNT STATIC ENDPOINT
 # ==========================================================
 
 auth.log.config(
     logging=True,                    # Master toggle: set False to completely disable logging
     logs_dir="logs",                 # Default: logs/ in application directory
-    static_mount_logs=False,         # If True, mounts logs/ statically at /logs
+    static_mount_log=False,          # Master static route gate: can be enabled/disabled dynamically at runtime
     level="INFO",                    # DEBUG, INFO, WARNING, ERROR, CRITICAL
     console_output=True,             # Echo application logs to stdout
     capture_terminal=True,           # Capture all terminal print() calls into server.log
@@ -66,6 +70,12 @@ auth.log.config(
         r"(?i)api[_-]?key\s*[:=]\s*\S+",
     ],
 )
+
+# Mount the static log endpoint on your FastAPI application:
+# auth.log.mount(app)
+# When static_mount_log=False: GET /logs/<file> returns 404
+# When static_mount_log=True:  GET /logs/<file> serves the log file direct
+
 
 
 # ==========================================================

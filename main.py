@@ -88,6 +88,8 @@ auth.log.config(
     redact_patterns=config.LOG_REDACT_PATTERNS,
 )
 
+auth.log.mount(app)
+
 
 def run():
     import uvicorn

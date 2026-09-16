@@ -87,6 +87,7 @@ Response:
     "logs_dir": "/path/to/logs",
     "store_dir": "/path/to/logs/store",
     "static_mount_logs": false,
+    "static_mount_log": false,
     "level": "INFO",
     "console_output": true,
     "capture_terminal": false,
@@ -319,7 +320,7 @@ Body:
 - `capture_terminal` (optional): Boolean. When `true`, all process `print()` outputs are captured into `server.log`.
 - `redact_sensitive` (optional): Boolean. Automatically sanitize tokens, passwords, cookies, and secret keys.
 - `redact_patterns` (optional): Array of regex strings. Custom regular expressions to mask as `[REDACTED]`.
-- `static_mount_logs` (optional): Boolean. Expose `logs/` via static file mount at `/logs`.
+- `static_mount_logs` / `static_mount_log` (optional): Boolean. Dynamic gate for static log file access at `/logs/<filename>`. When `true`, files are served directly; when `false`, requests return `404 Not Found`. Can be toggled at runtime without remounting or restarting.
 - `logs_dir` (optional): String. Custom directory path where log files are stored.
 
 Response:

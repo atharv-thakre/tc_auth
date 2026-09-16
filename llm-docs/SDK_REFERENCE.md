@@ -255,6 +255,9 @@ Configures the centralized logging subsystem.
 - **`capture_terminal`** (*bool*, default `False`): When `True`, all process `print()` outputs are captured into `server.log`.
 - **`redact_patterns`** (*list[str]*, optional): Regular expression patterns to sanitize from logs and terminal prints.
 
+### `mount(app: FastAPI, path: str = "/logs") -> None`
+Mounts the physical logs directory as a static file endpoint on the given FastAPI application instance. Access to static files (`/logs/<filename>`) dynamically checks `static_mount_logs` (or `static_mount_log`) and `logging` on every request. It can be enabled or disabled dynamically from configuration without remounting or restarting the server.
+
 ### `load() -> dict`
 Returns the active configuration dictionary including `"logging"`, `"logs_dir"`, `"store_dir"`, `"level"`, etc.
 

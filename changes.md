@@ -45,6 +45,7 @@ Retrieves the live in-memory configuration of `tc_auth` services.
       "logs_dir": "/path/to/project/logs",
       "store_dir": "/path/to/project/logs/store",
       "static_mount_logs": false,
+      "static_mount_log": false,
       "level": "INFO",
       "console_output": true,
       "capture_terminal": true,
@@ -80,7 +81,7 @@ Dynamically updates logging service settings. Supports partial updates; omitted 
   | `capture_terminal` | `boolean` | Optional | When `true`, all `print()` outputs produced anywhere in the process are captured into `server.log` while still printing to terminal. |
   | `redact_sensitive` | `boolean` | Optional | Mask standard tokens, passwords, cookies, and secret keys. |
   | `redact_patterns` | `string[]` | Optional | Array of regular expression patterns to redact in application logs and captured prints. Evaluated independently from `redact_sensitive`. |
-  | `static_mount_logs` | `boolean` | Optional | Expose logs directory at `/logs` static route. |
+  | `static_mount_logs` / `static_mount_log` | `boolean` | Optional | Dynamic toggle for static log access (`/logs/<file>`). When `false`, returns `404 Not Found`; when `true`, serves files. Can be updated dynamically. |
   | `logs_dir` | `string` | Optional | Base directory for log storage. |
 
 - **Example Request Payload (Full Update)**:
