@@ -80,15 +80,12 @@ if config.DISCORD_CLIENT_ID and config.DISCORD_CLIENT_SECRET:
 auth.log.config(
     enabled=config.LOG_ENABLED,
     logs_dir=config.LOG_DIR,
-    static_mount_logs=config.LOG_STATIC_MOUNT,
     level=config.LOG_LEVEL,
     console_output=config.LOG_CONSOLE_OUTPUT,
     capture_terminal=config.LOG_CAPTURE_TERMINAL,
     redact_sensitive=config.LOG_REDACT_SENSITIVE,
     redact_patterns=config.LOG_REDACT_PATTERNS,
 )
-
-auth.log.mount(app)
 
 
 def run():

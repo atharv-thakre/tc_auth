@@ -9,12 +9,8 @@ from connect import auth
 #
 # Available methods:
 #
-#     mount(app, path="/logs")
-#         Mount the logs directory on a FastAPI application instance. Access to static files
-#         is dynamically enabled or disabled via static_mount_log / static_mount_logs in config.
-#
-#     config(logging=True, logs_dir=None, static_mount_logs=False, static_mount_log=None, level="INFO", console_output=True, capture_terminal=False, redact_sensitive=True, redact_patterns=None)
-#         Configure logging enabled status, directory, levels, redaction, terminal capture, and static mounting.
+#     config(logging=True, logs_dir=None, level="INFO", console_output=True, capture_terminal=False, redact_sensitive=True, redact_patterns=None)
+#         Configure logging enabled status, directory, levels, redaction, and terminal capture.
 #
 #     load()
 #         Get current logging configuration dictionary (includes "logging" key).
@@ -54,13 +50,12 @@ print("Current Logging Config:", config)
 
 
 # ==========================================================
-# 2. CONFIGURE LOGGING & MOUNT STATIC ENDPOINT
+# 2. CONFIGURE LOGGING
 # ==========================================================
 
 auth.log.config(
     logging=True,                    # Master toggle: set False to completely disable logging
     logs_dir="logs",                 # Default: logs/ in application directory
-    static_mount_log=False,          # Master static route gate: can be enabled/disabled dynamically at runtime
     level="INFO",                    # DEBUG, INFO, WARNING, ERROR, CRITICAL
     console_output=True,             # Echo application logs to stdout
     capture_terminal=True,           # Capture all terminal print() calls into server.log
@@ -70,11 +65,6 @@ auth.log.config(
         r"(?i)api[_-]?key\s*[:=]\s*\S+",
     ],
 )
-
-# Mount the static log endpoint on your FastAPI application:
-# auth.log.mount(app)
-# When static_mount_log=False: GET /logs/<file> returns 404
-# When static_mount_log=True:  GET /logs/<file> serves the log file direct
 
 
 

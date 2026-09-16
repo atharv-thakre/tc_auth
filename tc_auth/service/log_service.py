@@ -242,8 +242,6 @@ class LogService:
     def __init__(
         self,
         logs_dir: str | Path | None = None,
-        static_mount_logs: bool = False,
-        static_mount_log: bool | None = None,
         level: str = "INFO",
         console_output: bool = True,
         capture_terminal: bool = False,
@@ -255,7 +253,6 @@ class LogService:
         self.logging = bool(enabled) if enabled is not None else bool(logging)
         self.logs_dir = Path(logs_dir).resolve() if logs_dir else (Path.cwd() / "logs").resolve()
         self.store_dir = self.logs_dir / "store"
-        self.static_mount_logs = bool(static_mount_log) if static_mount_log is not None else bool(static_mount_logs)
         self.level = level.upper() if isinstance(level, str) and level.upper() in VALID_LEVELS else "INFO"
         self.console_output = bool(console_output)
         self.capture_terminal = bool(capture_terminal)
@@ -273,9 +270,6 @@ class LogService:
         }
         self._subscriber_lock = threading.Lock()
 
-        # Track mounted FastAPI applications
-        self._mounted_apps: set = set()
-
         # Ensure directory structure and primary log files exist
         self._init_filesystem()
 
@@ -290,46 +284,6 @@ class LogService:
 
         # Set as current active logger
         LogService.set_current(self)
-
-    def mount(self, app, path: str = "/logs") -> None:
-        """
-        Mounts the physical logs directory as a static file endpoint on the given FastAPI app.
-        Access dynamically respects self.static_mount_logs and self.logging settings.
-        Can be enabled or disabled dynamically from configuration without remounting.
-        """
-        if app in self._mounted_apps:
-            return
-
-        for route in getattr(app, "routes", []):
-            if getattr(route, "path", None) == path:
-                self._mounted_apps.add(app)
-                return
-
-        from fastapi.staticfiles import StaticFiles
-
-        log_svc = self
-
-        class DynamicStaticLogs(StaticFiles):
-            def __init__(inner_self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
-
-            async def __call__(inner_self, scope, receive, send):
-                if not getattr(log_svc, "logging", True) or not getattr(log_svc, "static_mount_logs", False):
-                    from starlette.responses import PlainTextResponse
-                    response = PlainTextResponse("Static log access is disabled", status_code=404)
-                    await response(scope, receive, send)
-                    return
-
-                cur_dir = str(log_svc.logs_dir)
-                if inner_self.directory != cur_dir:
-                    inner_self.directory = cur_dir
-                    inner_self.all_directories = [cur_dir]
-
-                await super().__call__(scope, receive, send)
-
-        static_app = DynamicStaticLogs(directory=str(self.logs_dir))
-        app.mount(path, static_app, name="logs")
-        self._mounted_apps.add(app)
 
 
     # ==========================================================
@@ -400,8 +354,6 @@ class LogService:
         logging: bool | None = None,
         enabled: bool | None = None,
         logs_dir: str | Path | None = None,
-        static_mount_logs: bool | None = None,
-        static_mount_log: bool | None = None,
         level: str | None = None,
         console_output: bool | None = None,
         capture_terminal: bool | None = None,
@@ -427,14 +379,6 @@ class LogService:
             new_logs_dir = Path(logs_dir).resolve()
             self.logs_dir = new_logs_dir
             self.store_dir = self.logs_dir / "store"
-
-        if static_mount_log is not None:
-            static_mount_logs = static_mount_log
-
-        if static_mount_logs is not None:
-            if not isinstance(static_mount_logs, bool):
-                raise InvalidConfigError("Logging", "static_mount_logs must be a boolean")
-            self.static_mount_logs = static_mount_logs
 
         if level is not None:
             if not isinstance(level, str) or level.upper() not in VALID_LEVELS:
@@ -481,8 +425,6 @@ class LogService:
             "logging": self.logging,
             "logs_dir": str(self.logs_dir),
             "store_dir": str(self.store_dir),
-            "static_mount_logs": self.static_mount_logs,
-            "static_mount_log": self.static_mount_logs,
             "level": self.level,
             "console_output": self.console_output,
             "capture_terminal": self.capture_terminal,

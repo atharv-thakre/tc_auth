@@ -79,7 +79,6 @@ class Config:
     LOGGING = os.getenv("LOGGING", os.getenv("LOG_ENABLED", "true")).lower() == "true"
     LOG_ENABLED = LOGGING
     LOG_DIR = os.getenv("LOG_DIR")
-    LOG_STATIC_MOUNT = os.getenv("LOG_STATIC_MOUNT", "false").lower() == "true"
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
     LOG_CONSOLE_OUTPUT = os.getenv("LOG_CONSOLE_OUTPUT", "true").lower() == "true"
     LOG_CAPTURE_TERMINAL = os.getenv("LOG_CAPTURE_TERMINAL", "false").lower() == "true"

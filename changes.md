@@ -44,8 +44,6 @@ Retrieves the live in-memory configuration of `tc_auth` services.
       "logging": true,
       "logs_dir": "/path/to/project/logs",
       "store_dir": "/path/to/project/logs/store",
-      "static_mount_logs": false,
-      "static_mount_log": false,
       "level": "INFO",
       "console_output": true,
       "capture_terminal": true,
@@ -81,7 +79,6 @@ Dynamically updates logging service settings. Supports partial updates; omitted 
   | `capture_terminal` | `boolean` | Optional | When `true`, all `print()` outputs produced anywhere in the process are captured into `server.log` while still printing to terminal. |
   | `redact_sensitive` | `boolean` | Optional | Mask standard tokens, passwords, cookies, and secret keys. |
   | `redact_patterns` | `string[]` | Optional | Array of regular expression patterns to redact in application logs and captured prints. Evaluated independently from `redact_sensitive`. |
-  | `static_mount_logs` / `static_mount_log` | `boolean` | Optional | Dynamic toggle for static log access (`/logs/<file>`). When `false`, returns `404 Not Found`; when `true`, serves files. Can be updated dynamically. |
   | `logs_dir` | `string` | Optional | Base directory for log storage. |
 
 - **Example Request Payload (Full Update)**:
@@ -96,7 +93,6 @@ Dynamically updates logging service settings. Supports partial updates; omitted 
       "(?i)authorization:\\s*bearer\\s+\\S+",
       "(?i)token\\s*[:=]\\s*\\S+"
     ],
-    "static_mount_logs": false,
     "logs_dir": "logs"
   }
   ```
@@ -134,7 +130,6 @@ export interface LoggingState {
   logging: boolean;
   logs_dir: string;
   store_dir: string;
-  static_mount_logs: boolean;
   level: LogLevel;
   console_output: boolean;
   capture_terminal: boolean;
@@ -149,7 +144,6 @@ export interface LoggingConfigUpdatePayload {
   capture_terminal?: boolean;
   redact_sensitive?: boolean;
   redact_patterns?: string[];
-  static_mount_logs?: boolean;
   logs_dir?: string;
 }
 
@@ -273,7 +267,6 @@ export const LoggingConfigPanel: React.FC<Props> = ({ accessToken }) => {
   const [consoleOutput, setConsoleOutput] = useState<boolean>(true);
   const [captureTerminal, setCaptureTerminal] = useState<boolean>(false);
   const [redactSensitive, setRedactSensitive] = useState<boolean>(true);
-  const [staticMountLogs, setStaticMountLogs] = useState<boolean>(false);
   const [logsDir, setLogsDir] = useState<string>("");
   const [patternInput, setPatternInput] = useState<string>("");
   const [redactPatterns, setRedactPatterns] = useState<string[]>([]);
@@ -294,7 +287,6 @@ export const LoggingConfigPanel: React.FC<Props> = ({ accessToken }) => {
       setConsoleOutput(data.console_output);
       setCaptureTerminal(data.capture_terminal);
       setRedactSensitive(data.redact_sensitive);
-      setStaticMountLogs(data.static_mount_logs);
       setLogsDir(data.logs_dir || "");
       setRedactPatterns(data.redact_patterns || []);
     } catch (err: any) {
@@ -356,7 +348,6 @@ export const LoggingConfigPanel: React.FC<Props> = ({ accessToken }) => {
       capture_terminal: captureTerminal,
       redact_sensitive: redactSensitive,
       redact_patterns: redactPatterns,
-      static_mount_logs: staticMountLogs,
       logs_dir: logsDir.trim() || undefined,
     };
 
@@ -496,18 +487,6 @@ export const LoggingConfigPanel: React.FC<Props> = ({ accessToken }) => {
               onChange={(e) => setRedactSensitive(e.target.checked)}
             />
             <span>Auto-redact built-in sensitive fields (tokens, passwords, cookies)</span>
-          </label>
-        </div>
-
-        {/* Static Mount Checkbox */}
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-            <input
-              type="checkbox"
-              checked={staticMountLogs}
-              onChange={(e) => setStaticMountLogs(e.target.checked)}
-            />
-            <span>Static Mount at <code>/logs</code> route</span>
           </label>
         </div>
 

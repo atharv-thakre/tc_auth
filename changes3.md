@@ -363,7 +363,6 @@ Call `auth.log.config(...)` during application startup:
 auth.log.config(
     logging=True,              # Master toggle (default: True). If False, logging is completely disabled
     logs_dir="logs",           # Base directory (default: 'logs/' in working directory)
-    static_mount_logs=False,   # If True, exposes physical logs at GET /logs/*
     level="INFO",              # Minimum level: DEBUG, INFO, WARNING, ERROR, CRITICAL
     console_output=True,       # Echo JSONL events to terminal / stdout
     redact_sensitive=True,     # Recursively redact credentials, tokens, cookies, secrets
@@ -385,7 +384,6 @@ print(config)
 #   "logging": True,
 #   "logs_dir": "/path/to/project/logs",
 #   "store_dir": "/path/to/project/logs/store",
-#   "static_mount_logs": False,
 #   "level": "INFO",
 #   "console_output": True,
 #   "redact_sensitive": True,
@@ -505,7 +503,6 @@ In `.env`:
 # ==========================================================
 LOGGING=true
 LOG_DIR=logs
-LOG_STATIC_MOUNT=false
 LOG_LEVEL=INFO
 LOG_CONSOLE_OUTPUT=true
 LOG_REDACT_SENSITIVE=true
@@ -518,7 +515,6 @@ from config import config
 auth.log.config(
     logging=config.LOGGING,
     logs_dir=config.LOG_DIR,
-    static_mount_logs=config.LOG_STATIC_MOUNT,
     level=config.LOG_LEVEL,
     console_output=config.LOG_CONSOLE_OUTPUT,
     redact_sensitive=config.LOG_REDACT_SENSITIVE,
