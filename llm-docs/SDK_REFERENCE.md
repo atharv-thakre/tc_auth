@@ -273,7 +273,15 @@ Creates a copy of `tcauth` or `server` log into `logs/store/{source}-{name}.log`
 Returns summary metadata for primary logs and all saved snapshots in `logs/store/`.
 - **Raises**: `LoggingDisabledError`.
 
-### `get_log_content(name: str, limit: int | None = None, offset: int = 0) -> dict`
+### `get_tcauth(page: int = 1, limit: int | None = 50, offset: int | None = None) -> dict`
+Retrieves paginated structured JSON records from `tcauth.log`.
+- **Raises**: `LoggingDisabledError`.
+
+### `get_server(page: int = 1, limit: int | None = 50, offset: int | None = None) -> dict`
+Retrieves paginated text output lines from `server.log`.
+- **Raises**: `LoggingDisabledError`.
+
+### `get_log_content(name: str, page: int = 1, limit: int | None = 50, offset: int | None = None) -> dict`
 Retrieves paginated JSON records or string lines from a primary log or stored snapshot.
 - **Raises**: `LoggingDisabledError`, `LogSnapshotNotFoundError`.
 

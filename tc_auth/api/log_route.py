@@ -114,10 +114,10 @@ class LogRoutes:
         )
         def get_tcauth(
             user=current,
-            limit: int | None = Query(None, ge=1, le=5000, description="Max records to return"),
-            offset: int = Query(0, ge=0, description="Record offset"),
+            page: int = Query(1, ge=1, description="Page number (1-based)"),
+            limit: int = Query(50, ge=1, le=5000, description="Max records per page"),
         ):
-            return self.log_service.get_log_content("tcauth", limit=limit, offset=offset)
+            return self.log_service.get_tcauth(page=page, limit=limit)
 
         @self.router.get(
             "/server",
@@ -125,10 +125,10 @@ class LogRoutes:
         )
         def get_server(
             user=current,
-            limit: int | None = Query(None, ge=1, le=5000, description="Max lines to return"),
-            offset: int = Query(0, ge=0, description="Line offset"),
+            page: int = Query(1, ge=1, description="Page number (1-based)"),
+            limit: int = Query(50, ge=1, le=5000, description="Max lines per page"),
         ):
-            return self.log_service.get_log_content("server", limit=limit, offset=offset)
+            return self.log_service.get_server(page=page, limit=limit)
 
         # ------------------------------------------------------
         # 5. Generic Snapshot / Log by Name
@@ -141,10 +141,10 @@ class LogRoutes:
         def get_log_by_name(
             name: str,
             user=current,
-            limit: int | None = Query(None, ge=1, le=5000, description="Max records/lines to return"),
-            offset: int = Query(0, ge=0, description="Offset"),
+            page: int = Query(1, ge=1, description="Page number (1-based)"),
+            limit: int = Query(50, ge=1, le=5000, description="Max records/lines per page"),
         ):
-            return self.log_service.get_log_content(name=name, limit=limit, offset=offset)
+            return self.log_service.get_log_content(name=name, page=page, limit=limit)
 
         @self.router.delete(
             "/{name}",

@@ -101,9 +101,9 @@ Prefix: `/tc-auth/log` (or `/log` depending on `include_routes` prefix).
 | :--- | :--- | :--- | :--- |
 | `GET` | `/log` | List primary logs & stored snapshots | `200 OK` (`400` if disabled) |
 | `POST` | `/log` | Create a snapshot (`{ "name": "...", "source": "tcauth" }`) | `201 Created` (`400` if disabled) |
-| `GET` | `/log/tcauth` | Get `tcauth.log` records (supports `limit`, `offset`) | `200 OK` (`400` if disabled) |
-| `GET` | `/log/server` | Get `server.log` lines (supports `limit`, `offset`) | `200 OK` (`400` if disabled) |
-| `GET` | `/log/{name}` | Get specific snapshot or primary log content (full name without extension) | `200 OK` (`400` if disabled) |
+| `GET` | `/log/tcauth` | Get `tcauth.log` records (supports `page`, `limit`) | `200 OK` (`400` if disabled) |
+| `GET` | `/log/server` | Get `server.log` lines (supports `page`, `limit`) | `200 OK` (`400` if disabled) |
+| `GET` | `/log/{name}` | Get specific snapshot or primary log content (supports `page`, `limit`) | `200 OK` (`400` if disabled) |
 | `GET` | `/log/tcauth/stream` | Server-Sent Events (SSE) stream for `tcauth.log` | `200 OK` (`400` if disabled) |
 | `GET` | `/log/server/stream` | Server-Sent Events (SSE) stream for `server.log` | `200 OK` (`400` if disabled) |
 | `POST` | `/log/tcauth/reset` | Truncate `tcauth.log` to 0 bytes and continue logging | `200 OK` (`400` if disabled) |

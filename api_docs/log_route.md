@@ -125,8 +125,8 @@ Read structured records from `tcauth.log` (parsed JSON objects).
 
 - **Headers**: `Authorization: Bearer <token>`
 - **Query Parameters**:
-  - `limit` (optional integer, 1 to 5000): Maximum records to return.
-  - `offset` (optional integer, default 0): Number of records to skip from beginning.
+  - `page` (optional integer, default 1, min 1): Page number (1-based).
+  - `limit` (optional integer, default 50, 1 to 5000): Maximum records per page.
 - **Response `200 OK`**:
 ```json
 {
@@ -134,7 +134,12 @@ Read structured records from `tcauth.log` (parsed JSON objects).
   "filename": "tcauth.log",
   "format": "jsonl",
   "total_records": 120,
+  "page": 1,
+  "limit": 50,
+  "total_pages": 3,
   "count": 50,
+  "has_next": true,
+  "has_prev": false,
   "offset": 0,
   "records": [
     {
@@ -165,8 +170,8 @@ Read lines from `server.log` (standard text lines).
 
 - **Headers**: `Authorization: Bearer <token>`
 - **Query Parameters**:
-  - `limit` (optional integer, 1 to 5000)
-  - `offset` (optional integer, default 0)
+  - `page` (optional integer, default 1, min 1): Page number (1-based).
+  - `limit` (optional integer, default 50, 1 to 5000): Maximum lines per page.
 - **Response `200 OK`**:
 ```json
 {
@@ -174,7 +179,12 @@ Read lines from `server.log` (standard text lines).
   "filename": "server.log",
   "format": "text",
   "total_records": 450,
-  "count": 100,
+  "page": 1,
+  "limit": 50,
+  "total_pages": 9,
+  "count": 50,
+  "has_next": true,
+  "has_prev": false,
   "offset": 0,
   "records": [
     "INFO:     Started server process [28900]",
@@ -194,7 +204,9 @@ Retrieve contents of a specific log file or snapshot by name.
 - **Path Parameter**: `name`
   - For primary logs: `"tcauth"` or `"server"`.
   - For stored snapshots: The **full snapshot filename without extension** (e.g. `"tcauth-pre-release-check"` or `"server-pre-release-check"`).
-- **Query Parameters**: `limit`, `offset`
+- **Query Parameters**:
+  - `page` (optional integer, default 1, min 1): Page number (1-based).
+  - `limit` (optional integer, default 50, 1 to 5000): Maximum records/lines per page.
 - **Response `200 OK`**: Returns JSON records for JSONL files or string lines for text files.
 - **Error Response `404 Not Found`**: `{ "success": false, "message": "Log snapshot 'invalid-name' not found", "error_code": "log_snapshot_not_found" }`
 

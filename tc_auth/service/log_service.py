@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import math
 import os
 import re
 import shutil
@@ -865,14 +866,34 @@ class LogService:
             "snapshots": snapshots,
         }
 
+    def get_tcauth(
+        self,
+        page: int = 1,
+        limit: int | None = 50,
+        offset: int | None = None,
+    ) -> dict:
+        """Retrieves paginated tcauth.log application records."""
+        return self.get_log_content("tcauth", page=page, limit=limit, offset=offset)
+
+    def get_server(
+        self,
+        page: int = 1,
+        limit: int | None = 50,
+        offset: int | None = None,
+    ) -> dict:
+        """Retrieves paginated server.log server output lines."""
+        return self.get_log_content("server", page=page, limit=limit, offset=offset)
+
     def get_log_content(
         self,
         name: str,
-        limit: int | None = None,
-        offset: int = 0,
+        page: int = 1,
+        limit: int | None = 50,
+        offset: int | None = None,
     ) -> dict:
         """
-        Retrieves log content for primary logs ('tcauth', 'server') or stored snapshots.
+        Retrieves paginated log content for primary logs ('tcauth', 'server') or stored snapshots.
+        Supports pagination via page & limit, with fallback offset.
         """
         self._check_enabled()
         clean_name = name.strip()
@@ -885,7 +906,7 @@ class LogService:
             path = self._get_primary_path(src)
             if not path.exists():
                 path.touch(exist_ok=True)
-            return self._read_file_records(path, is_jsonl=(src == "tcauth"), limit=limit, offset=offset)
+            return self._read_file_records(path, is_jsonl=(src == "tcauth"), page=page, limit=limit, offset=offset)
 
         # 2. Snapshot in store
         # Search by exact name, tcauth-{name}.log, server-{name}.log, or {name}.log
@@ -904,16 +925,17 @@ class LogService:
             raise LogSnapshotNotFoundError(name=clean_name)
 
         is_jsonl = matching_file.name.startswith("tcauth-")
-        return self._read_file_records(matching_file, is_jsonl=is_jsonl, limit=limit, offset=offset)
+        return self._read_file_records(matching_file, is_jsonl=is_jsonl, page=page, limit=limit, offset=offset)
 
     def _read_file_records(
         self,
         file_path: Path,
         is_jsonl: bool,
-        limit: int | None = None,
-        offset: int = 0,
+        page: int = 1,
+        limit: int | None = 50,
+        offset: int | None = None,
     ) -> dict:
-        """Reads file lines safely, optionally parsing JSON objects for JSONL logs."""
+        """Reads file lines safely with pagination, optionally parsing JSON objects for JSONL logs."""
         try:
             with open(file_path, "r", encoding="utf-8", errors="replace") as f:
                 lines = f.readlines()
@@ -922,13 +944,34 @@ class LogService:
                 "success": False,
                 "error": f"Failed to read file: {str(e)}",
                 "total_records": 0,
+                "page": page,
+                "limit": limit,
+                "total_pages": 0,
+                "count": 0,
+                "has_next": False,
+                "has_prev": False,
                 "records": [],
             }
 
         total_records = len(lines)
-        selected_lines = lines[offset:] if offset > 0 else lines
+        page_num = max(1, page) if page is not None else 1
+
+        if offset is not None:
+            calc_offset = max(0, offset)
+        elif limit is not None and limit > 0:
+            calc_offset = (page_num - 1) * limit
+        else:
+            calc_offset = 0
+
         if limit is not None and limit > 0:
-            selected_lines = selected_lines[:limit]
+            selected_lines = lines[calc_offset : calc_offset + limit]
+            total_pages = math.ceil(total_records / limit) if total_records > 0 else 0
+        else:
+            selected_lines = lines[calc_offset:]
+            total_pages = 1 if total_records > 0 else 0
+
+        has_next = (page_num < total_pages) if (limit and limit > 0) else False
+        has_prev = page_num > 1
 
         if is_jsonl:
             parsed_records = []
@@ -945,19 +988,30 @@ class LogService:
                 "filename": file_path.name,
                 "format": "jsonl",
                 "total_records": total_records,
+                "page": page_num,
+                "limit": limit,
+                "total_pages": total_pages,
                 "count": len(parsed_records),
-                "offset": offset,
+                "has_next": has_next,
+                "has_prev": has_prev,
+                "offset": calc_offset,
                 "records": parsed_records,
             }
         else:
+            clean_lines = [l.rstrip("\r\n") for l in selected_lines]
             return {
                 "success": True,
                 "filename": file_path.name,
                 "format": "text",
                 "total_records": total_records,
-                "count": len(selected_lines),
-                "offset": offset,
-                "records": [l.rstrip("\r\n") for l in selected_lines],
+                "page": page_num,
+                "limit": limit,
+                "total_pages": total_pages,
+                "count": len(clean_lines),
+                "has_next": has_next,
+                "has_prev": has_prev,
+                "offset": calc_offset,
+                "records": clean_lines,
             }
 
     def delete_snapshot(self, name: str) -> dict:

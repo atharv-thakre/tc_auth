@@ -170,7 +170,12 @@ export interface GetLogContentResponse<T = TcAuthLogRecord | string> {
   filename: string;
   format: "jsonl" | "text";
   total_records: number;
+  page: number;
+  limit: number;
+  total_pages: number;
   count: number;
+  has_next: boolean;
+  has_prev: boolean;
   offset: number;
   records: T[];
 }
@@ -289,14 +294,14 @@ Copies the current content of `tcauth.log` or `server.log` into `logs/store/{sou
 ---
 
 ### 5.3 `GET /log/tcauth` — Read Application JSONL Records
-Reads parsed JSON log events with offset and limit pagination.
+Reads parsed JSON log events with page and limit pagination.
 
 - **Query Parameters**:
-  - `limit` (*integer, optional*): Maximum records (1–5000).
-  - `offset` (*integer, optional*): Starting record index (default: 0).
+  - `page` (*integer, optional*): Page number (1-based, default: 1).
+  - `limit` (*integer, optional*): Maximum records per page (1–5000, default: 50).
 - **Request**:
   ```http
-  GET /log/tcauth?limit=50&offset=0 HTTP/1.1
+  GET /log/tcauth?page=1&limit=50 HTTP/1.1
   Authorization: Bearer <token>
   ```
 - **Response `200 OK`**:
@@ -306,7 +311,12 @@ Reads parsed JSON log events with offset and limit pagination.
     "filename": "tcauth.log",
     "format": "jsonl",
     "total_records": 120,
+    "page": 1,
+    "limit": 50,
+    "total_pages": 3,
     "count": 50,
+    "has_next": true,
+    "has_prev": false,
     "offset": 0,
     "records": [
       {
@@ -334,8 +344,8 @@ Reads parsed JSON log events with offset and limit pagination.
 Reads text lines from `server.log`.
 
 - **Query Parameters**:
-  - `limit` (*integer, optional*): Maximum lines (1–5000).
-  - `offset` (*integer, optional*): Starting line index (default: 0).
+  - `page` (*integer, optional*): Page number (1-based, default: 1).
+  - `limit` (*integer, optional*): Maximum lines per page (1–5000, default: 50).
 - **Response `200 OK`**:
   ```json
   {
@@ -343,7 +353,12 @@ Reads text lines from `server.log`.
     "filename": "server.log",
     "format": "text",
     "total_records": 450,
-    "count": 100,
+    "page": 1,
+    "limit": 50,
+    "total_pages": 9,
+    "count": 50,
+    "has_next": true,
+    "has_prev": false,
     "offset": 0,
     "records": [
       "INFO:     Started server process [19404]",

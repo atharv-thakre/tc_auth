@@ -28,8 +28,14 @@ from connect import auth
 #     list_logs()
 #         List primary logs and stored snapshots.
 #
-#     get_log_content(name, limit=None, offset=0)
-#         Read lines or JSON records for a log or snapshot.
+#     get_tcauth(page=1, limit=50)
+#         Retrieve paginated structured records from tcauth.log.
+#
+#     get_server(page=1, limit=50)
+#         Retrieve paginated output lines from server.log.
+#
+#     get_log_content(name, page=1, limit=50)
+#         Read paginated lines or JSON records for a log or snapshot.
 #
 #     reset_log(source)
 #         Truncate a primary log to 0 bytes and continue logging.
@@ -106,8 +112,16 @@ print("Snapshot created:", snapshot)
 summary = auth.log.list_logs()
 print("All Logs:", summary)
 
-# Read snapshot content using full name without extension ("tcauth-debug-session")
-content = auth.log.get_log_content(name="tcauth-debug-session", limit=10)
+# Read paginated tcauth.log records
+tcauth_page = auth.log.get_tcauth(page=1, limit=10)
+print(f"tcauth page 1: {tcauth_page['count']} of {tcauth_page['total_records']} records (pages: {tcauth_page['total_pages']})")
+
+# Read paginated server.log lines
+server_page = auth.log.get_server(page=1, limit=10)
+print(f"server page 1: {server_page['count']} of {server_page['total_records']} lines (pages: {server_page['total_pages']})")
+
+# Read snapshot content using full name without extension ("tcauth-debug-session") with pagination
+content = auth.log.get_log_content(name="tcauth-debug-session", page=1, limit=10)
 print("Snapshot Content:", content)
 
 # Delete snapshot using full name without extension ("tcauth-debug-session")
