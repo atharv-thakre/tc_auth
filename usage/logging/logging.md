@@ -23,22 +23,25 @@ Configure via `auth.log.config(...)` or `auth.logging.config(...)`:
 
 ```python
 auth.log.config(
-    logging=True,              # Master toggle (default: True). Set False to disable logging
-    logs_dir="logs",           # Base directory (default: 'logs/' in working directory)
-    level="INFO",              # DEBUG, INFO, WARNING, ERROR, CRITICAL
-    console_output=True,       # Echo JSONL events to stdout
-    capture_terminal=False,    # If True, captures all process print() calls into server.log
-    redact_sensitive=True,     # Recursively redact tokens, passwords, cookies, secrets
-    redact_patterns=[          # List of regular expression patterns to mask as [REDACTED]
+    logging=True,              # Master switch for persistent logging infrastructure (also enables all log files)
+    logs_dir="logs",           # Where persistent logs live
+    level="INFO",              # Logging severity/filtering (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    console_output=True,       # Whether logging output is shown in the console (independent of logging)
+    capture_terminal=False,    # Capture terminal print/stdout/stderr into the logging system (server.log)
+    redact_sensitive=True,     # Existing/default sensitive-data redaction
+    redact_patterns=[          # User-defined regex redaction
         r"(?i)authorization:\s*bearer\s+\S+",
         r"(?i)api[_-]?key\s*[:=]\s*\S+",
     ],
+    max_log_lines=10000,       # Maximum retained lines for server.log/tcauth.log
+    trim_log_lines=1000,       # Number of oldest lines removed when the limit is reached
 )
 ```
 
 > [!NOTE]
-> **Disabled Mode (`logging=False`)**:
-> - SDK logging calls (`auth.log.info`, `auth.log.error`, etc.) become silent no-ops.
+> **Disabled Persistent Logging Mode (`logging=False`)**:
+> - Persistent logging to `tcauth.log` and `server.log` is skipped.
+> - Console output (`console_output=True`) continues to display in terminal independently.
 > - SDK management calls (`auth.log.list_logs()`, `auth.log.create_snapshot()`, etc.) raise `LoggingDisabledError`.
 > - All `/log/*` API endpoints return HTTP `400 Bad Request` with `{"success": false, "message": "Logging is disabled", "error_code": "logging_disabled"}`.
 

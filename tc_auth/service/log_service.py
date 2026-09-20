@@ -24,6 +24,13 @@ from ..exceptions.error import (
 
 # Standard logging levels
 VALID_LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+LEVEL_VALUES = {
+    "DEBUG": 10,
+    "INFO": 20,
+    "WARNING": 30,
+    "ERROR": 40,
+    "CRITICAL": 50,
+}
 PRIMARY_SOURCES = {"tcauth", "server"}
 
 # Keys that must ALWAYS be redacted centrally
@@ -87,7 +94,10 @@ SAFE_METADATA_KEYS = {
 }
 
 
-# Regex patterns for sensitive tokens in free text
+# Regex patterns for sensitive tokens and ANSI color escape codes in free text
+ANSI_ESCAPE_PATTERN = re.compile(
+    r"(?:\x1b|\033|\u001b)\[[0-9:;<=>?]*[ -/]*[@-~]|(?:\x1b|\033|\u001b)?\[\d+(?:;\d+)*[a-zA-Z]"
+)
 JWT_PATTERN = re.compile(r"eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]*")
 BEARER_PATTERN = re.compile(r"Bearer\s+([A-Za-z0-9_\-\.]+)", re.IGNORECASE)
 BASIC_AUTH_PATTERN = re.compile(r"Basic\s+([A-Za-z0-9+/=]+)", re.IGNORECASE)
@@ -249,9 +259,10 @@ class LogService:
         redact_sensitive: bool = True,
         redact_patterns: list[str] | None = None,
         logging: bool = True,
-        enabled: bool | None = None,
+        max_log_lines: int = 10000,
+        trim_log_lines: int = 1000,
     ):
-        self.logging = bool(enabled) if enabled is not None else bool(logging)
+        self.logging = bool(logging)
         self.logs_dir = Path(logs_dir).resolve() if logs_dir else (Path.cwd() / "logs").resolve()
         self.store_dir = self.logs_dir / "store"
         self.level = level.upper() if isinstance(level, str) and level.upper() in VALID_LEVELS else "INFO"
@@ -259,10 +270,18 @@ class LogService:
         self.capture_terminal = bool(capture_terminal)
         self.redact_sensitive = bool(redact_sensitive)
         self.redact_patterns, self.compiled_redact_patterns = self._compile_patterns(redact_patterns)
+        self.max_log_lines = max(10, int(max_log_lines)) if max_log_lines is not None else 10000
+        self.trim_log_lines = max(1, int(trim_log_lines)) if trim_log_lines is not None else 1000
+        if self.trim_log_lines >= self.max_log_lines:
+            self.trim_log_lines = max(1, self.max_log_lines // 2)
 
         # Thread safety locks
         self._tcauth_lock = threading.Lock()
         self._server_lock = threading.Lock()
+
+        # In-memory line counters for fast trimming checks
+        self._tcauth_line_count = 0
+        self._server_line_count = 0
 
         # SSE subscribers: source -> set of (loop, asyncio.Queue)
         self._subscribers: dict[str, set[tuple[asyncio.AbstractEventLoop, asyncio.Queue]]] = {
@@ -292,7 +311,7 @@ class LogService:
     # ==========================================================
 
     def _init_filesystem(self):
-        """Creates logs/ and logs/store/ directories and primary log files if missing."""
+        """Creates logs/ and logs/store/ directories and primary log files if missing, and syncs line counters."""
         try:
             self.logs_dir.mkdir(parents=True, exist_ok=True)
             self.store_dir.mkdir(parents=True, exist_ok=True)
@@ -300,10 +319,24 @@ class LogService:
             tcauth_path = self.logs_dir / "tcauth.log"
             if not tcauth_path.exists():
                 tcauth_path.touch(exist_ok=True)
+                self._tcauth_line_count = 0
+            else:
+                try:
+                    with open(tcauth_path, "r", encoding="utf-8", errors="replace") as f:
+                        self._tcauth_line_count = sum(1 for _ in f)
+                except Exception:
+                    self._tcauth_line_count = 0
 
             server_path = self.logs_dir / "server.log"
             if not server_path.exists():
                 server_path.touch(exist_ok=True)
+                self._server_line_count = 0
+            else:
+                try:
+                    with open(server_path, "r", encoding="utf-8", errors="replace") as f:
+                        self._server_line_count = sum(1 for _ in f)
+                except Exception:
+                    self._server_line_count = 0
         except Exception as e:
             _ORIGINAL_STDERR.write(f"[tc-auth LogService] Error creating log directories: {e}\n")
 
@@ -353,13 +386,14 @@ class LogService:
         self,
         *,
         logging: bool | None = None,
-        enabled: bool | None = None,
         logs_dir: str | Path | None = None,
         level: str | None = None,
         console_output: bool | None = None,
         capture_terminal: bool | None = None,
         redact_sensitive: bool | None = None,
         redact_patterns: list[str] | None = None,
+        max_log_lines: int | None = None,
+        trim_log_lines: int | None = None,
     ) -> dict:
         """
         Configures the logging service settings.
@@ -368,11 +402,6 @@ class LogService:
             if not isinstance(logging, bool):
                 raise InvalidConfigError("Logging", "logging must be a boolean")
             self.logging = logging
-
-        if enabled is not None:
-            if not isinstance(enabled, bool):
-                raise InvalidConfigError("Logging", "enabled must be a boolean")
-            self.logging = enabled
 
         if logs_dir is not None:
             if not isinstance(logs_dir, (str, Path)) or not str(logs_dir).strip():
@@ -409,6 +438,19 @@ class LogService:
             self.redact_patterns = raw_patterns
             self.compiled_redact_patterns = compiled
 
+        if max_log_lines is not None:
+            if not isinstance(max_log_lines, int) or max_log_lines < 10:
+                raise InvalidConfigError("Logging", "max_log_lines must be an integer >= 10")
+            self.max_log_lines = max_log_lines
+
+        if trim_log_lines is not None:
+            if not isinstance(trim_log_lines, int) or trim_log_lines < 1:
+                raise InvalidConfigError("Logging", "trim_log_lines must be an integer >= 1")
+            self.trim_log_lines = trim_log_lines
+
+        if self.trim_log_lines >= self.max_log_lines:
+            self.trim_log_lines = max(1, self.max_log_lines // 2)
+
         self._init_filesystem()
         self._setup_uvicorn_logging()
         self._apply_terminal_capture()
@@ -431,21 +473,30 @@ class LogService:
             "capture_terminal": self.capture_terminal,
             "redact_sensitive": self.redact_sensitive,
             "redact_patterns": self.redact_patterns,
+            "max_log_lines": self.max_log_lines,
+            "trim_log_lines": self.trim_log_lines,
         }
 
     # ==========================================================
-    # SENSITIVE DATA REDACTION
+    # SENSITIVE DATA REDACTION & ANSI CLEANING
     # ==========================================================
+
+    @staticmethod
+    def strip_ansi(text: str) -> str:
+        """Strips ANSI color and terminal control escape sequences from text."""
+        if not isinstance(text, str):
+            return text
+        return ANSI_ESCAPE_PATTERN.sub("", text)
 
     def redact_text(self, text: str) -> str:
         """
-        Applies regex redaction rules to free-text strings.
+        Applies regex redaction rules to free-text strings after stripping ANSI escape sequences.
         Built-in token patterns are applied if redact_sensitive=True.
         Custom redact_patterns regexes are ALWAYS applied if configured.
         """
         if not isinstance(text, str):
             return text
-        result = text
+        result = self.strip_ansi(text)
         if self.redact_sensitive:
             result = JWT_PATTERN.sub("[REDACTED]", result)
             result = BEARER_PATTERN.sub("Bearer [REDACTED]", result)
@@ -501,6 +552,29 @@ class LogService:
     # APPLICATION LOGGING (tcauth.log - JSONL)
     # ==========================================================
 
+    def _trim_file_if_needed(self, file_path: Path, current_count: int) -> int:
+        """
+        Trims oldest trim_log_lines from file if line count exceeds max_log_lines.
+        Must be called inside the appropriate file lock.
+        """
+        if current_count < self.max_log_lines:
+            return current_count
+        try:
+            if not file_path.exists():
+                return 0
+            with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+                lines = f.readlines()
+            if len(lines) >= self.max_log_lines:
+                trim_count = min(self.trim_log_lines, len(lines))
+                remaining = lines[trim_count:]
+                with open(file_path, "w", encoding="utf-8") as f:
+                    f.writelines(remaining)
+                return len(remaining)
+            return len(lines)
+        except Exception as e:
+            _ORIGINAL_STDERR.write(f"[tc-auth LogService] Error trimming {file_path.name}: {e}\n")
+            return current_count
+
     def log_event(
         self,
         level: str,
@@ -525,11 +599,25 @@ class LogService:
     ):
         """
         Logs an application event in JSONL format to tcauth.log and broadcasts to SSE subscribers.
+        Console output is shown if console_output=True, independent of persistent logging.
         """
-        if not self.logging:
+        clean_level = level.upper() if isinstance(level, str) and level.upper() in VALID_LEVELS else "INFO"
+
+        # Severity filtering
+        if LEVEL_VALUES.get(clean_level, 20) < LEVEL_VALUES.get(self.level, 20):
             return
 
-        clean_level = level.upper() if isinstance(level, str) and level.upper() in VALID_LEVELS else "INFO"
+        # Output to console if enabled (independent of self.logging)
+        if self.console_output:
+            try:
+                _ORIGINAL_STDOUT.write(f"[tc-auth] {clean_level} [{event}]: {message}\n")
+                _ORIGINAL_STDOUT.flush()
+            except Exception:
+                pass
+
+        # If persistent logging is disabled, do not persist to disk
+        if not self.logging:
+            return
 
         record: dict[str, Any] = {
             "timestamp": datetime.now(UTC).isoformat(),
@@ -586,14 +674,6 @@ class LogService:
         # Append to tcauth.log safely
         self._append_tcauth_log(json_line)
 
-        # Output to console if enabled (directly to original terminal to avoid re-capturing into server.log)
-        if self.console_output:
-            try:
-                _ORIGINAL_STDOUT.write(f"[tc-auth] {clean_level} [{event}]: {message}\n")
-                _ORIGINAL_STDOUT.flush()
-            except Exception:
-                pass
-
     def _append_tcauth_log(self, json_line: str):
         """Thread-safely appends a JSON line to tcauth.log and broadcasts to subscribers."""
         if not self.logging:
@@ -604,6 +684,9 @@ class LogService:
                 with open(tcauth_path, "a", encoding="utf-8") as f:
                     f.write(json_line + "\n")
                     f.flush()
+                self._tcauth_line_count += 1
+                if self._tcauth_line_count >= self.max_log_lines:
+                    self._tcauth_line_count = self._trim_file_if_needed(tcauth_path, self._tcauth_line_count)
         except Exception as e:
             _ORIGINAL_STDERR.write(f"[tc-auth LogService] Failed to write to tcauth.log: {e}\n")
 
@@ -620,6 +703,9 @@ class LogService:
                 with open(server_path, "a", encoding="utf-8") as f:
                     f.write(sanitized_line + "\n")
                     f.flush()
+                self._server_line_count += 1
+                if self._server_line_count >= self.max_log_lines:
+                    self._server_line_count = self._trim_file_if_needed(server_path, self._server_line_count)
         except Exception as e:
             _ORIGINAL_STDERR.write(f"[tc-auth LogService] Failed to write to server.log: {e}\n")
 
@@ -1062,6 +1148,10 @@ class LogService:
         with lock:
             with open(path, "w", encoding="utf-8") as f:
                 f.truncate(0)
+            if src == "tcauth":
+                self._tcauth_line_count = 0
+            else:
+                self._server_line_count = 0
 
         return {
             "success": True,

@@ -48,7 +48,8 @@ class DashboardRoute:
                 "state": "active",
             }
 
-        @self.router.get("/load/")
+        @self.router.get("/load")
+        @self.router.get("/load/", include_in_schema=False)
         def load_config(user=current):
             return {
                 "email": self.email_service.load(),

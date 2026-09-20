@@ -192,7 +192,8 @@ class Auth:
     def include_routes(
         self,
         app: FastAPI,
-        prefix: str = "/tc-auth"
+        prefix: str = "/tc-auth",
+        middleware_secret_key: str = "session-secret-key",
     ):
         app.add_exception_handler(
             AuthError,
@@ -201,7 +202,7 @@ class Auth:
 
         app.add_middleware(
             SessionMiddleware,
-            secret_key="session-secret-key",
+            secret_key=middleware_secret_key,
         )
 
         app.include_router(

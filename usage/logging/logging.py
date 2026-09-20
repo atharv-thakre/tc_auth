@@ -9,11 +9,11 @@ from connect import auth
 #
 # Available methods:
 #
-#     config(logging=True, logs_dir=None, level="INFO", console_output=True, capture_terminal=False, redact_sensitive=True, redact_patterns=None)
-#         Configure logging enabled status, directory, levels, redaction, and terminal capture.
+#     config(logging=True, logs_dir=None, level="INFO", console_output=True, capture_terminal=False, redact_sensitive=True, redact_patterns=None, max_log_lines=10000, trim_log_lines=1000)
+#         Configure persistent logging, directory, levels, console output, redaction, terminal capture, and file line limits.
 #
 #     load()
-#         Get current logging configuration dictionary (includes "logging" key).
+#         Get current logging configuration dictionary.
 #
 #     info(event, message, **metadata)
 #     debug(event, message, **metadata)
@@ -60,16 +60,18 @@ print("Current Logging Config:", config)
 # ==========================================================
 
 auth.log.config(
-    logging=True,                    # Master toggle: set False to completely disable logging
-    logs_dir="logs",                 # Default: logs/ in application directory
-    level="INFO",                    # DEBUG, INFO, WARNING, ERROR, CRITICAL
-    console_output=True,             # Echo application logs to stdout
-    capture_terminal=True,           # Capture all terminal print() calls into server.log
-    redact_sensitive=True,           # Automatically redact passwords, tokens, secrets, cookies
-    redact_patterns=[                # Custom regular expressions to mask as [REDACTED]
+    logging=True,                    # Master switch for persistent logs (tcauth.log, server.log)
+    logs_dir="logs",                 # Where persistent logs live
+    level="INFO",                    # Logging severity/filtering (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    console_output=True,             # Whether logging output is shown in console (independent of logging)
+    capture_terminal=True,           # Capture terminal print/stdout/stderr into server.log
+    redact_sensitive=True,           # Default sensitive data redaction (passwords, tokens, cookies)
+    redact_patterns=[                # User-defined regex redaction
         r"(?i)authorization:\s*bearer\s+\S+",
         r"(?i)api[_-]?key\s*[:=]\s*\S+",
     ],
+    max_log_lines=10000,             # Maximum retained lines for server.log/tcauth.log
+    trim_log_lines=1000,             # Number of oldest lines removed when limit is reached
 )
 
 

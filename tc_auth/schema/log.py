@@ -23,34 +23,40 @@ class LoggingConfig(BaseModel):
 
     logging: bool | None = Field(
         default=None,
-        description="Whether logging is globally enabled or disabled.",
-    )
-    enabled: bool | None = Field(
-        default=None,
-        description="Alias for logging toggle.",
+        description="Master switch for persistent logging infrastructure (also enables all log files).",
     )
     logs_dir: str | None = Field(
         default=None,
-        description="Base directory for log files. Defaults to 'logs/' in working directory.",
+        description="Where persistent logs live. Defaults to 'logs/'.",
     )
     level: str | None = Field(
         default=None,
-        description="Logging level threshold (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
+        description="Logging severity/filtering (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
     )
     console_output: bool | None = Field(
         default=None,
-        description="Whether to echo application logs to the console/stdout",
+        description="Whether logging output is shown in the console (independent of logging).",
     )
     capture_terminal: bool | None = Field(
         default=None,
-        description="Whether to capture all terminal print() statements to server.log",
+        description="Capture terminal print/stdout/stderr into the logging system (server.log).",
     )
     redact_sensitive: bool | None = Field(
         default=None,
-        description="Whether to automatically redact sensitive fields (tokens, passwords, cookies)",
+        description="Existing/default sensitive-data redaction.",
     )
     redact_patterns: list[str] | None = Field(
         default=None,
-        description="List of custom regex patterns to redact in application logs and captured prints",
+        description="User-defined regex redaction patterns.",
+    )
+    max_log_lines: int | None = Field(
+        default=None,
+        ge=10,
+        description="Maximum retained lines for server.log/tcauth.log.",
+    )
+    trim_log_lines: int | None = Field(
+        default=None,
+        ge=1,
+        description="Number of oldest lines removed when the limit is reached.",
     )
 

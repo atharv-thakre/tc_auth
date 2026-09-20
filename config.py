@@ -76,13 +76,14 @@ class Config:
     # LOGGING
     # ======================================================
 
-    LOGGING = os.getenv("LOGGING", os.getenv("LOG_ENABLED", "true")).lower() == "true"
-    LOG_ENABLED = LOGGING
-    LOG_DIR = os.getenv("LOG_DIR")
+    LOGGING = os.getenv("LOGGING", "true").lower() == "true"
+    LOGS_DIR = os.getenv("LOGS_DIR", "logs")
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
     LOG_CONSOLE_OUTPUT = os.getenv("LOG_CONSOLE_OUTPUT", "true").lower() == "true"
     LOG_CAPTURE_TERMINAL = os.getenv("LOG_CAPTURE_TERMINAL", "false").lower() == "true"
     LOG_REDACT_SENSITIVE = os.getenv("LOG_REDACT_SENSITIVE", "true").lower() == "true"
+    LOG_MAX_LOG_LINES = int(os.getenv("LOG_MAX_LOG_LINES", "10000"))
+    LOG_TRIM_LOG_LINES = int(os.getenv("LOG_TRIM_LOG_LINES", "1000"))
 
     _raw_patterns = os.getenv("LOG_REDACT_PATTERNS")
     if _raw_patterns:
@@ -97,4 +98,4 @@ class Config:
         LOG_REDACT_PATTERNS = []
 
 
-config = Config()
+config = Config()
