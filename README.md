@@ -379,4 +379,4 @@ auth.email.config(
 - **[Architecture, Models & ERD Diagrams](MODELS.md)**: Visual Mermaid ER diagrams, SQL table schemas, and relational flowcharts.
 - **[Frequently Asked Questions & Comparison](FAQ.md)**: Deep architectural comparison against FastAPI-Users, Auth0, and Supabase.
 - **[Frontend Token Guide](token_usage_guide.md)**: Production Axios client with automatic 401 token refresh queue.
-- **[Changelog](changes.md)**: Detailed version history and architectural changes.
+- **[Release Catalog](catelog.md)**: Detailed version history and architectural release catalog (v1.5.0 to v1.5.3).

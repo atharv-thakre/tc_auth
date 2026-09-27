@@ -11,7 +11,7 @@ This guide provides a comprehensive, production-ready integration pattern for fr
 | **Access Token** | Long-lived (default 7 days) | Short-lived (default 15 minutes) |
 | **Refresh Token** | *None* | Long-lived (default 7 days) |
 | **Protected Requests** | `Authorization: Bearer <access_token>` | `Authorization: Bearer <access_token>` |
-| **Token Expiry Behavior** | Redirect to `/login` when token expires (HTTP 401) | Auto-refresh access token via `POST /tc-auth/token/refresh` without logging user out |
+| **Token Expiry Behavior** | Redirect to `/login` when token expires (HTTP 401) | Auto-refresh access token via `POST /token/refresh` without logging user out |
 | **OAuth Callback URL** | `?access_token=...` | `?access_token=...&refresh_token=...` |
 | **Login/Signup Response** | `{ "access_token": "...", "account": {...} }` | `{ "access_token": "...", "refresh_token": "...", "account": {...} }` |
 
@@ -305,7 +305,7 @@ async function handleLoginResponse(responsePayload: {
 
 ## 6. Handling OAuth & Magic Link Callbacks (Google, GitHub, Discord, Magic Link)
 
-When the user completes an OAuth login OR clicks a Magic Link (`GET /tc-auth/link/login`), the backend redirects the browser back to `{frontend_url}/oauth/callback` with query parameters.
+When the user completes an OAuth login OR clicks a Magic Link (`GET /link/login`), the backend redirects the browser back to `{frontend_url}/oauth/callback` with query parameters.
 
 ### Query Parameter Shapes:
 - **Single-Token Mode**: `https://app.example.com/oauth/callback?access_token=eyJhbGci...`
@@ -380,7 +380,7 @@ export default function OAuthCallbackPage() {
 
 ### 7.1 Email Verification & Error Callback Router (`/magic-link/callback`)
 
-When verifying an email address (`GET /tc-auth/link/verify`) or encountering an error (expired/replayed link), the backend redirects to `{frontend_url}/magic-link/callback`:
+When verifying an email address (`GET /link/verify`) or encountering an error (expired/replayed link), the backend redirects to `{frontend_url}/magic-link/callback`:
 
 ```tsx
 // app/magic-link/callback/page.tsx
@@ -418,13 +418,15 @@ export default function MagicLinkCallbackPage() {
 }
 ```
 
-### 7.2 Bot-Safe SPA Verification (`POST /tc-auth/link/login`)
+### 7.2 Bot-Safe SPA Verification (`POST /link/login`)
 
-Corporate email scanners often pre-fetch links in incoming emails, which could consume single-use OTPs prematurely. To protect against this, you can direct magic links to a frontend confirmation page (e.g. `{frontend_url}/confirm-login?email=...&otp=...`) with a "Click to Confirm Sign-In" button that sends `POST /tc-auth/link/login`:
+Corporate email scanners often pre-fetch links in incoming emails, which could consume single-use OTPs prematurely. To protect against this, you can direct magic links to a frontend confirmation page (e.g. `{frontend_url}/confirm-login?email=...&otp=...`) with a "Click to Confirm Sign-In" button that sends `POST /link/login`:
 
 ```typescript
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.example.com/tc-auth";
+
 async function confirmMagicLinkLogin(email: string, otp: string) {
-  const res = await fetch("https://api.example.com/tc-auth/link/login", {
+  const res = await fetch(`${API_BASE_URL}/link/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, otp }),
@@ -451,12 +453,14 @@ async function confirmMagicLinkLogin(email: string, otp: string) {
 When logging out, destroy the server session and clear all local tokens:
 
 ```typescript
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.example.com/tc-auth";
+
 async function logout() {
   const accessToken = localStorage.getItem("access_token");
 
   try {
     if (accessToken) {
-      await fetch("https://api.example.com/tc-auth/logout", {
+      await fetch(`${API_BASE_URL}/logout`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${accessToken}`,

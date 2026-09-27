@@ -1,6 +1,7 @@
 # Admin OAuth Link Routes
 
-Base path: `/tc-auth/oauth`
+Base path: Configurable (defaults to `/tc-auth/oauth` when main auth router is mounted with prefix `/tc-auth`).
+All routes and code examples below are relative to your auth `baseUrl` (e.g. `const baseUrl = "https://api.example.com/tc-auth"` -> `${baseUrl}/oauth/...`).
 
 Authentication:
 

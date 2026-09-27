@@ -1,6 +1,7 @@
 # Admin OTP Routes
 
-Base path: `/tc-auth/otp`
+Base path: Configurable (defaults to `/tc-auth/otp` when main auth router is mounted with prefix `/tc-auth`).
+All routes and code examples below are relative to your auth `baseUrl` (e.g. `const baseUrl = "https://api.example.com/tc-auth"` -> `${baseUrl}/otp/...`).
 
 Authentication:
 

@@ -1,18 +1,19 @@
 # Dashboard / Config Routes
 
-Base path: `/tc-auth/config`
+Base path: Configurable (defaults to `/tc-auth/config` when main auth router is mounted with prefix `/tc-auth`).
+All routes and code examples below are relative to your auth `baseUrl` (e.g. `const baseUrl = "https://api.example.com/tc-auth"`).
 
 Authentication:
 
-- `GET /pulse` is public.
+- `GET /config/pulse` is public.
 - All other routes in this group require `Authorization: Bearer <access_token>` and the `superadmin` role.
 
 Notes:
 
-- The current code exposes `GET /load/`; there is no separate `/redirect` route in the route module anymore.
+- The current code exposes `GET /config/load/`; there is no separate `/redirect` route in the route module anymore.
 - Configuration is stored in memory on the running service instance.
 
-## GET `/pulse`
+## GET `/config/pulse`
 
 Health and readiness-style probe.
 
@@ -30,11 +31,11 @@ Response:
 Example:
 
 ```js
-const res = await fetch(`${baseUrl}/tc-auth/config/pulse`);
+const res = await fetch(`${baseUrl}/config/pulse`);
 const data = await res.json();
 ```
 
-## GET `/load/`
+## GET `/config/load/`
 
 Loads the current email, GitHub, Google, Discord, and JWT configuration.
 
@@ -98,7 +99,7 @@ Response:
 Example:
 
 ```js
-const res = await fetch(`${baseUrl}/tc-auth/config/load/`, {
+const res = await fetch(`${baseUrl}/config/load/`, {
   method: "GET",
   headers: {
     Authorization: `Bearer ${accessToken}`,
@@ -108,7 +109,7 @@ const res = await fetch(`${baseUrl}/tc-auth/config/load/`, {
 const config = await res.json();
 ```
 
-## GET `/counts`
+## GET `/config/counts`
 
 Returns counts for the main tables.
 
@@ -126,7 +127,7 @@ Response:
 Example:
 
 ```js
-const res = await fetch(`${baseUrl}/tc-auth/config/counts`, {
+const res = await fetch(`${baseUrl}/config/counts`, {
   method: "GET",
   headers: { Authorization: `Bearer ${accessToken}` },
 });
@@ -332,7 +333,7 @@ Example:
 
 ```js
 // Dynamically toggle logging or change level to DEBUG
-const res = await fetch(`${baseUrl}/tc-auth/config/logging`, {
+const res = await fetch(`${baseUrl}/config/logging`, {
   method: "POST",
   headers: {
     "Content-Type": "application/json",

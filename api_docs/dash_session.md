@@ -1,6 +1,7 @@
 # Admin Session Routes
 
-Base path: `/tc-auth/session`
+Base path: Configurable (defaults to `/tc-auth/session` when main auth router is mounted with prefix `/tc-auth`).
+All routes and code examples below are relative to your auth `baseUrl` (e.g. `const baseUrl = "https://api.example.com/tc-auth"` -> `${baseUrl}/session/...`).
 
 Authentication:
 

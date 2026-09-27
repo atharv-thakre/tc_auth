@@ -1,6 +1,7 @@
 # Sign In / Sign Up Routes
 
-Base path: `/tc-auth`
+Base path: Configurable (defaults to `/tc-auth` via `auth.include_routes(app, prefix="/tc-auth")`).
+All routes and code examples below are relative to your auth `baseUrl` (e.g. `const baseUrl = "https://api.example.com/tc-auth"`).
 
 Authentication:
 
@@ -83,7 +84,7 @@ Response:
 Example:
 
 ```js
-await fetch(`${baseUrl}/tc-auth/send/email/otp/signup`, {
+await fetch(`${baseUrl}/send/email/otp/signup`, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
@@ -156,7 +157,7 @@ To fully support all Magic Link flows, your frontend application requires the fo
 #### 1. OAuth Callback Router: `{frontend_url}/oauth/callback` (Reused!)
 > [!TIP]
 > **No new router needed for Magic Link login!**
-> `GET /tc-auth/link/login` uses the identical redirect format as Google, GitHub, and Discord OAuth. Your existing OAuth callback page handles Magic Link logins automatically.
+> `GET /link/login` uses the identical redirect format as Google, GitHub, and Discord OAuth. Your existing OAuth callback page handles Magic Link logins automatically.
 
 ```tsx
 // app/oauth/callback/page.tsx or src/pages/OAuthCallback.tsx
@@ -190,7 +191,7 @@ export default function OAuthCallbackPage() {
 ```
 
 #### 2. Magic Link Callback Router: `{frontend_url}/magic-link/callback` (Required for Verification & Errors)
-Handles email verification notifications (`GET /tc-auth/link/verify`) and error alerts:
+Handles email verification notifications (`GET /link/verify`) and error alerts:
 
 ```tsx
 // app/magic-link/callback/page.tsx or src/pages/MagicLinkCallback.tsx
@@ -229,10 +230,10 @@ export default function MagicLinkCallbackPage() {
 ```
 
 #### 3. Password Reset Router: `{frontend_url}/reset-password`
-Receives `?email=...&otp=...` from `GET /tc-auth/link/reset`. The user fills out a new password and submits `POST /tc-auth/forgot/password`.
+Receives `?email=...&otp=...` from `GET /link/reset`. The user fills out a new password and submits `POST /forgot/password`.
 
 #### 4. Signup Completion Router: `{frontend_url}/signup`
-Receives `?email=...&otp=...&verified=true` from `GET /tc-auth/link/signup`. The user completes registration by submitting `POST /tc-auth/signup/otp`.
+Receives `?email=...&otp=...&verified=true` from `GET /link/signup`. The user completes registration by submitting `POST /signup/otp`.
 
 ---
 
@@ -297,11 +298,11 @@ Response for `verify`:
 ```
 
 ### Bot Protection SPA Implementation:
-To prevent enterprise email scanner bots from pre-fetching the link and burning the single-use OTP, configure your magic link emails to open `{frontend_url}/confirm-login?email=...&otp=...` with a user button that submits `POST /tc-auth/link/login`:
+To prevent enterprise email scanner bots from pre-fetching the link and burning the single-use OTP, configure your magic link emails to open `{frontend_url}/confirm-login?email=...&otp=...` with a user button that submits `POST /link/login`:
 
 ```typescript
 async function handleConfirmLogin(email: string, otp: string) {
-  const res = await fetch("https://api.example.com/tc-auth/link/login", {
+  const res = await fetch(`${baseUrl}/link/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, otp }),
@@ -344,7 +345,7 @@ Same login payload shown above.
 Example:
 
 ```js
-const res = await fetch(`${baseUrl}/tc-auth/signup/otp`, {
+const res = await fetch(`${baseUrl}/signup/otp`, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
@@ -381,7 +382,7 @@ Same login payload shown above.
 Example:
 
 ```js
-const res = await fetch(`${baseUrl}/tc-auth/signup/password`, {
+const res = await fetch(`${baseUrl}/signup/password`, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
@@ -415,7 +416,7 @@ Same login payload shown above.
 Example:
 
 ```js
-const res = await fetch(`${baseUrl}/tc-auth/login/otp`, {
+const res = await fetch(`${baseUrl}/login/otp`, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
@@ -449,7 +450,7 @@ Same login payload shown above.
 Example:
 
 ```js
-const res = await fetch(`${baseUrl}/tc-auth/login/password`, {
+const res = await fetch(`${baseUrl}/login/password`, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
@@ -484,7 +485,7 @@ Same login payload shown above.
 Example:
 
 ```js
-const res = await fetch(`${baseUrl}/tc-auth/forgot/password`, {
+const res = await fetch(`${baseUrl}/forgot/password`, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
@@ -522,7 +523,7 @@ Response:
 Example:
 
 ```js
-const res = await fetch(`${baseUrl}/tc-auth/token/refresh`, {
+const res = await fetch(`${baseUrl}/token/refresh`, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({

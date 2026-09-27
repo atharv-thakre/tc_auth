@@ -1,6 +1,7 @@
 # Profile Routes
 
-Base path: `/tc-auth`
+Base path: Configurable (defaults to `/tc-auth` via `auth.include_routes(app, prefix="/tc-auth")`).
+All routes and code examples below are relative to your auth `baseUrl` (e.g. `const baseUrl = "https://api.example.com/tc-auth"`).
 
 Authentication:
 
@@ -85,7 +86,7 @@ Response:
 Example:
 
 ```js
-const res = await fetch(`${baseUrl}/tc-auth/logout`, {
+const res = await fetch(`${baseUrl}/logout`, {
   method: "POST",
   headers: {
     Authorization: `Bearer ${accessToken}`,
@@ -111,7 +112,7 @@ Response:
 Example:
 
 ```js
-const res = await fetch(`${baseUrl}/tc-auth/logout-all`, {
+const res = await fetch(`${baseUrl}/logout-all`, {
   method: "POST",
   headers: {
     Authorization: `Bearer ${accessToken}`,
@@ -131,7 +132,7 @@ Response:
 Example:
 
 ```js
-const res = await fetch(`${baseUrl}/tc-auth/me`, {
+const res = await fetch(`${baseUrl}/me`, {
   method: "GET",
   headers: {
     Authorization: `Bearer ${accessToken}`,
@@ -164,7 +165,7 @@ Response:
 Example:
 
 ```js
-const res = await fetch(`${baseUrl}/tc-auth/me`, {
+const res = await fetch(`${baseUrl}/me`, {
   method: "PATCH",
   headers: {
     Authorization: `Bearer ${accessToken}`,
@@ -203,7 +204,7 @@ Response:
 Example:
 
 ```js
-const res = await fetch(`${baseUrl}/tc-auth/update/password`, {
+const res = await fetch(`${baseUrl}/update/password`, {
   method: "PUT",
   headers: {
     Authorization: `Bearer ${accessToken}`,
@@ -241,7 +242,7 @@ Response (Direct Flow):
 
 Example (Browser Redirect):
 ```js
-const res = await fetch(`${baseUrl}/tc-auth/account/oauth/link/google?frontend_url=${encodeURIComponent(frontendUrl)}`, {
+const res = await fetch(`${baseUrl}/account/oauth/link/google?frontend_url=${encodeURIComponent(frontendUrl)}`, {
   method: "POST",
   headers: {
     Authorization: `Bearer ${accessToken}`,
@@ -272,7 +273,7 @@ Response:
 
 Example:
 ```js
-const res = await fetch(`${baseUrl}/tc-auth/account/oauth/google`, {
+const res = await fetch(`${baseUrl}/account/oauth/google`, {
   method: "DELETE",
   headers: {
     Authorization: `Bearer ${accessToken}`,
